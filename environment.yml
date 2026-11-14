@@ -1,0 +1,22 @@
+name: flood-piml
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - scipy
+  - scikit-learn
+  - xgboost
+  - jupyter
+  - notebook
+  - ipykernel
+  - pip
+  - pip:
+    # Install PyTorch separately — see README for hardware-specific instructions
+    # Apple Silicon (MPS): pip install torch torchvision torchaudio
+    # CUDA: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    - torch

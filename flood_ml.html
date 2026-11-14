@@ -1,0 +1,1097 @@
+<title>Flood ML</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+/* Light-first academic paper aesthetic
+   Layout: numbered-section document with sticky TOC sidebar */
+:root {
+  --bg:        #fafaf8;
+  --surface:   #ffffff;
+  --surface2:  #f2f1ee;
+  --border:    rgba(60,60,50,0.12);
+  --fg:        #1a1a16;
+  --fg-mid:    #4a4a3e;
+  --fg-muted:  #7a7a6a;
+  --accent:    #2d6a9f;
+  --accent2:   #1a4f78;
+  --warn:      #8a5c00;
+  --warn-bg:   rgba(138,92,0,0.07);
+  --flood:     #8b1a1a;
+  --flood-bg:  rgba(139,26,26,0.07);
+  --ok:        #1a5c3a;
+  --ok-bg:     rgba(26,92,58,0.07);
+  --rule:      rgba(60,60,50,0.14);
+  --code-bg:   #f0efe9;
+  --eq-bg:     #f5f4f0;
+  --f-serif:   'Lora', Georgia, serif;
+  --f-sans:    'Inter', system-ui, sans-serif;
+  --f-mono:    'JetBrains Mono', 'Fira Mono', monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #0e0e0c;
+    --surface:   #161614;
+    --surface2:  #1e1e1a;
+    --border:    rgba(200,200,180,0.1);
+    --fg:        #deded4;
+    --fg-mid:    #aeae9e;
+    --fg-muted:  #7e7e70;
+    --accent:    #6aace0;
+    --accent2:   #4d8fc2;
+    --warn:      #d4a040;
+    --warn-bg:   rgba(212,160,64,0.09);
+    --flood:     #d46060;
+    --flood-bg:  rgba(212,96,96,0.09);
+    --ok:        #60c090;
+    --ok-bg:     rgba(96,192,144,0.09);
+    --rule:      rgba(200,200,180,0.12);
+    --code-bg:   #1e1e1a;
+    --eq-bg:     #1a1a16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:        #0e0e0c;
+  --surface:   #161614;
+  --surface2:  #1e1e1a;
+  --border:    rgba(200,200,180,0.1);
+  --fg:        #deded4;
+  --fg-mid:    #aeae9e;
+  --fg-muted:  #7e7e70;
+  --accent:    #6aace0;
+  --accent2:   #4d8fc2;
+  --warn:      #d4a040;
+  --warn-bg:   rgba(212,160,64,0.09);
+  --flood:     #d46060;
+  --flood-bg:  rgba(212,96,96,0.09);
+  --ok:        #60c090;
+  --ok-bg:     rgba(96,192,144,0.09);
+  --rule:      rgba(200,200,180,0.12);
+  --code-bg:   #1e1e1a;
+  --eq-bg:     #1a1a16;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--f-serif);
+  font-size: 16px;
+  line-height: 1.75;
+  margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0;
+}
+
+.page-wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  grid-template-areas: "hdr hdr" "nav main";
+  gap: 0 3rem;
+  padding-block: 2.5rem 6rem;
+}
+
+/* Header */
+.doc-header {
+  grid-area: hdr;
+  border-bottom: 2px solid var(--rule);
+  padding-bottom: 2rem;
+  margin-bottom: 2rem;
+  max-width: 760px;
+}
+
+.doc-label {
+  font-family: var(--f-sans);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--fg-muted);
+  margin-bottom: 0.6rem;
+}
+
+h1 {
+  font-family: var(--f-serif);
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--fg);
+  margin: 0 0 0.75rem;
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+
+.doc-abstract {
+  font-size: 0.95rem;
+  color: var(--fg-mid);
+  line-height: 1.65;
+  max-width: 68ch;
+  font-style: italic;
+  border-left: 3px solid var(--rule);
+  padding-left: 1rem;
+  margin: 1rem 0;
+}
+
+.doc-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.5rem;
+  font-family: var(--f-sans);
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+  margin-top: 1rem;
+}
+
+/* Sidebar TOC */
+.toc {
+  grid-area: nav;
+  position: sticky;
+  top: 1.5rem;
+  align-self: start;
+  max-height: calc(100vh - 3rem);
+  overflow-y: auto;
+}
+
+.toc-inner {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.9rem;
+  background: var(--surface);
+}
+
+.toc-title {
+  font-family: var(--f-sans);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--fg-muted);
+  margin-bottom: 0.4rem;
+}
+
+.toc a {
+  display: block;
+  font-family: var(--f-sans);
+  font-size: 0.77rem;
+  color: var(--fg-muted);
+  text-decoration: none;
+  padding: 0.22rem 0.5rem;
+  border-radius: 3px;
+  border-left: 2px solid transparent;
+  transition: all 0.1s;
+  line-height: 1.35;
+}
+
+.toc a:hover {
+  color: var(--accent);
+  background: rgba(45,106,159,0.07);
+  border-left-color: var(--accent);
+}
+
+.toc a.active {
+  color: var(--accent);
+  background: rgba(45,106,159,0.07);
+  border-left-color: var(--accent);
+}
+
+.toc a.sub {
+  padding-left: 1.1rem;
+  font-size: 0.72rem;
+}
+
+/* Main content */
+.main {
+  grid-area: main;
+  min-width: 0;
+  max-width: 760px;
+}
+
+/* Sections */
+.section {
+  margin-bottom: 3rem;
+  scroll-margin-top: 1.5rem;
+}
+
+h2 {
+  font-family: var(--f-serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--fg);
+  margin: 0 0 1rem;
+  text-wrap: balance;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--rule);
+  counter-increment: section;
+}
+
+h2::before {
+  content: counter(section) ". ";
+  color: var(--fg-muted);
+  font-weight: 400;
+}
+
+body { counter-reset: section; }
+
+h3 {
+  font-family: var(--f-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg-mid);
+  margin: 1.75rem 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.82rem;
+}
+
+p {
+  margin: 0 0 1rem;
+  color: var(--fg-mid);
+  max-width: 68ch;
+}
+
+strong { color: var(--fg); font-weight: 600; }
+
+/* Equation blocks */
+.eq {
+  background: var(--eq-bg);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 5px 5px 0;
+  padding: 0.9rem 1.2rem;
+  margin: 0.75rem 0 1.25rem;
+  overflow-x: auto;
+}
+
+.eq pre {
+  font-family: var(--f-mono);
+  font-size: 0.82rem;
+  line-height: 1.8;
+  margin: 0;
+  color: var(--fg);
+}
+
+.eq-label {
+  font-family: var(--f-sans);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+  margin-bottom: 0.4rem;
+}
+
+/* Code */
+.code-block {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  overflow-x: auto;
+  margin: 0.5rem 0 1rem;
+}
+
+.code-label {
+  font-family: var(--f-sans);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-muted);
+  padding: 0.3rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.code-block pre {
+  font-family: var(--f-mono);
+  font-size: 0.78rem;
+  line-height: 1.65;
+  margin: 0;
+  padding: 0.8rem 1rem;
+  color: var(--fg);
+}
+
+code {
+  font-family: var(--f-mono);
+  font-size: 0.84em;
+  background: var(--code-bg);
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  color: var(--accent2);
+}
+
+/* Tables */
+.tbl-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 0.5rem 0 1.25rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+  font-family: var(--f-sans);
+}
+
+th {
+  background: var(--surface2);
+  padding: 0.5rem 0.9rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--fg-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+td {
+  padding: 0.5rem 0.9rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-mid);
+  vertical-align: top;
+  font-variant-numeric: tabular-nums;
+}
+
+tr:last-child td { border-bottom: none; }
+
+/* Callouts */
+.note {
+  border-left: 3px solid var(--accent);
+  background: rgba(45,106,159,0.06);
+  border-radius: 0 5px 5px 0;
+  padding: 0.7rem 1rem;
+  margin: 0.75rem 0 1.25rem;
+  font-family: var(--f-sans);
+  font-size: 0.88rem;
+  color: var(--fg-mid);
+}
+
+.note.warn {
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.note.limit {
+  border-left-color: var(--flood);
+  background: var(--flood-bg);
+}
+
+/* Architecture diagram (pure CSS/text) */
+.arch-diagram {
+  font-family: var(--f-mono);
+  font-size: 0.75rem;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1.2rem;
+  overflow-x: auto;
+  line-height: 1.6;
+  color: var(--fg);
+  margin: 0.75rem 0 1.25rem;
+  white-space: pre;
+}
+
+/* References */
+.ref-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  counter-reset: ref;
+}
+
+.ref-list li {
+  counter-increment: ref;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  font-family: var(--f-sans);
+  font-size: 0.82rem;
+  color: var(--fg-mid);
+  border-bottom: 1px solid var(--border);
+  line-height: 1.4;
+}
+
+.ref-list li:last-child { border-bottom: none; }
+
+.ref-list li::before {
+  content: "[" counter(ref) "]";
+  font-family: var(--f-mono);
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.ref-list em { font-style: italic; color: var(--fg); }
+
+/* Phase cards */
+.phase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
+  gap: 0.75rem;
+  margin: 0.75rem 0 1.25rem;
+}
+
+.phase-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.9rem 1rem;
+}
+
+.phase-num {
+  font-family: var(--f-mono);
+  font-size: 0.65rem;
+  color: var(--fg-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 0.3rem;
+}
+
+.phase-title {
+  font-family: var(--f-sans);
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--fg);
+  margin-bottom: 0.4rem;
+}
+
+.phase-detail {
+  font-family: var(--f-sans);
+  font-size: 0.78rem;
+  color: var(--fg-muted);
+  line-height: 1.4;
+}
+
+/* Theme toggle */
+.theme-btn {
+  position: fixed;
+  top: max(1rem, env(safe-area-inset-top, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.72rem;
+  font-family: var(--f-sans);
+  color: var(--fg-muted);
+  cursor: pointer;
+  z-index: 200;
+  letter-spacing: 0.04em;
+}
+.theme-btn:hover { color: var(--fg); }
+
+/* Responsive */
+@media (max-width: 760px) {
+  .page-wrap {
+    grid-template-columns: 1fr;
+    grid-template-areas: "hdr" "main";
+  }
+  .toc { display: none; }
+  .main { grid-column: 1; }
+}
+</style>
+
+<button class="theme-btn" id="themeBtn" onclick="
+  const r=document.documentElement;
+  const t=r.getAttribute('data-theme');
+  if(!t||t==='light'){r.setAttribute('data-theme','dark');this.textContent='☀ light';}
+  else{r.setAttribute('data-theme','light');this.textContent='🌙 dark';}
+">🌙 dark</button>
+
+<div class="page-wrap">
+
+<header class="doc-header">
+  <div class="doc-label">Research Document · Flood Monitoring System · Station 25017</div>
+  <h1>Physics-Informed Machine Learning for Real-Time Flood Level Forecasting: River Shannon at Banagher Bridge</h1>
+  <div class="doc-abstract">
+    This document sets out the theoretical basis, proposed architecture, loss function design, and experimental roadmap for a physics-informed neural network (PINN) approach to multi-horizon water level forecasting at OPW Station 25017. The objective is to replace the current deterministic rolling-slope estimator with a learned model that is simultaneously data-consistent and physically constrained, producing calibrated probabilistic forecasts at horizons T+1h through T+48h while penalising solutions that violate established hydraulic laws.
+  </div>
+  <div class="doc-meta">
+    <span>Station: 25017 · Banagher Bridge · River Shannon</span>
+    <span>Record: 1989–present (35 years daily; 15-min interval subset)</span>
+    <span>Status: Pre-deployment research</span>
+    <span>Last revised: 2026-11-05</span>
+  </div>
+</header>
+
+<aside class="toc">
+  <div class="toc-inner">
+    <div class="toc-title">Contents</div>
+    <a href="#s1">1. Motivation</a>
+    <a href="#s2">2. Physical System</a>
+    <a href="#s3" class="sub">2.1 Governing equations</a>
+    <a href="#s4" class="sub">2.2 Manning's equation</a>
+    <a href="#s5" class="sub">2.3 Flood wave routing</a>
+    <a href="#s6" class="sub">2.4 Recession dynamics</a>
+    <a href="#s7">3. PIML Framework</a>
+    <a href="#s8" class="sub">3.1 Loss function</a>
+    <a href="#s9" class="sub">3.2 Physics terms defined</a>
+    <a href="#s10">4. Network Architecture</a>
+    <a href="#s11" class="sub">4.1 Option A: LSTM</a>
+    <a href="#s12" class="sub">4.2 Option B: Residual hybrid</a>
+    <a href="#s13" class="sub">4.3 Option C: Neural ODE</a>
+    <a href="#s14">5. Input Features</a>
+    <a href="#s15">6. Failure of Prior ML</a>
+    <a href="#s16">7. Shannon Complications</a>
+    <a href="#s17">8. Data Requirements</a>
+    <a href="#s18">9. Experimental Plan</a>
+    <a href="#s19">10. Limitations</a>
+    <a href="#s20">11. References</a>
+  </div>
+</aside>
+
+<main class="main">
+
+<!-- 1. MOTIVATION -->
+<section class="section" id="s1">
+  <h2>Motivation and Problem Statement</h2>
+  <p>The current operational system uses a deterministic rolling-slope estimator: a least-squares linear regression over the five most recent 15-minute readings (75-minute window) produces a rise rate in m/min, from which a point estimate of time-to-threshold is computed. This is appropriate for near-real-time alerting but has two fundamental deficiencies.</p>
+  <p>First, it is reactive rather than predictive — it describes the present trend, not future behaviour. A river that is rising slowly now may accelerate rapidly as a flood wave arrives from upstream; the rolling slope provides no mechanism to anticipate this. Second, it treats the system as locally linear over short intervals, ignoring the nonlinear storage dynamics of a wide floodplain and the multi-day persistence characteristic of Shannon flood events.</p>
+  <p>The objective of this research track is to develop a model that provides calibrated probabilistic forecasts at multiple horizons (T+1h, T+6h, T+12h, T+24h, T+48h), where the learned solution is constrained by known hydraulic physics such that physically impossible predictions are penalised during training. The resulting model should be more reliable at extended horizons and should degrade gracefully to the physics-only estimate under data-sparse conditions.</p>
+</section>
+
+<!-- 2. PHYSICAL SYSTEM -->
+<section class="section" id="s2">
+  <h2>Physical System Description</h2>
+
+  <h3 id="s3">2.1 Governing Equations — 1D Saint-Venant</h3>
+  <p>Open-channel flow in a river is governed by the 1D Saint-Venant equations, comprising a continuity equation (mass conservation) and a momentum equation:</p>
+
+  <div class="eq">
+    <div class="eq-label">Saint-Venant — Continuity</div>
+    <pre>∂A/∂t  +  ∂Q/∂x  =  qₗ</pre>
+  </div>
+
+  <div class="eq">
+    <div class="eq-label">Saint-Venant — Momentum</div>
+    <pre>∂Q/∂t  +  ∂(Q²/A)/∂x  +  gA(∂h/∂x + Sf − S₀)  =  0</pre>
+  </div>
+
+  <p>where <code>A</code> = cross-sectional flow area [m²], <code>Q</code> = discharge [m³/s], <code>h</code> = water surface elevation [m OD], <code>Sf</code> = friction slope [-], <code>S₀</code> = channel bed slope [-], <code>qₗ</code> = lateral inflow per unit length [m²/s], and <code>g</code> = 9.81 m/s². These equations are the theoretical basis for all commercial hydraulic models (HEC-RAS, TUFLOW, InfoWorks ICM) and represent the highest-fidelity description of the system.</p>
+
+  <p>Encoding the full Saint-Venant system as a PINN residual requires channel bathymetry (cross-section geometry at multiple stations along the reach) and an estimate of Manning's roughness <code>n</code> as a function of location and inundation depth. Where this geometry is available from OPW CFRAM survey data, the PDE residual is a natural physics loss term. Where it is not, the simpler approximations below are used.</p>
+
+  <h3 id="s4">2.2 Manning's Equation and Rise Rate Bounds</h3>
+  <p>Under steady or quasi-steady conditions, the stage-discharge relationship at a cross-section is described by Manning's equation:</p>
+
+  <div class="eq">
+    <div class="eq-label">Manning's Equation</div>
+    <pre>Q  =  (1/n) · A(h) · R(h)^(2/3) · S^(1/2)
+
+where:
+  n       =  Manning's roughness coefficient  [≈ 0.030–0.035 for Shannon main channel]
+  A(h)    =  cross-sectional area as a function of stage h  [m²]
+  R(h)    =  A(h) / P(h)   (hydraulic radius)
+  P(h)    =  wetted perimeter  [m]
+  S       =  energy gradient slope  [≈ bed slope for wide channels, m/m]</pre>
+  </div>
+
+  <p>Manning's equation provides an upper bound on <code>dh/dt</code>: the maximum physically plausible rise rate at a given stage is determined by the maximum inflow <code>Q_max</code> that the upstream reach can deliver at that stage. This bound is computed as:</p>
+
+  <div class="eq">
+    <div class="eq-label">Maximum Rise Rate Constraint</div>
+    <pre>(dh/dt)_max  =  Q_max(h) / (W(h) · Δx)
+
+where W(h) = top width of water surface at stage h  [m]
+      Δx   = representative reach length  [m]</pre>
+  </div>
+
+  <p>For the Shannon at Banagher, the channel gradient is approximately <code>S₀ ≈ 5×10⁻⁵ m/m</code> (very flat), and the floodplain width <code>W</code> in flood conditions is several hundred metres. Both factors suppress <code>(dh/dt)_max</code> and explain the multi-day flood durations observed in the historical record.</p>
+
+  <h3 id="s5">2.3 Flood Wave Routing — Muskingum Method</h3>
+  <p>When an upstream station (SBRIDGE) is added to the monitoring network, the propagation of a flood wave between stations can be described by the Muskingum routing model:</p>
+
+  <div class="eq">
+    <div class="eq-label">Muskingum Routing</div>
+    <pre>O₂  =  C₀·I₂  +  C₁·I₁  +  C₂·O₁
+
+where:
+  I₁, I₂  =  upstream (SBRIDGE) level at t₁, t₂
+  O₁, O₂  =  downstream (Banagher) level at t₁, t₂
+
+  C₀  =  (Δt/2 − KX)  /  (K − KX + Δt/2)
+  C₁  =  (Δt/2 + KX)  /  (K − KX + Δt/2)
+  C₂  =  (K − KX − Δt/2)  /  (K − KX + Δt/2)
+
+  K   =  travel time parameter  [hours, estimated from cross-correlation]
+  X   =  attenuation parameter  [0 ≤ X ≤ 0.5; X≈0 for Shannon reaches]
+  C₀ + C₁ + C₂  =  1  (conservation check)</pre>
+  </div>
+
+  <p>The parameters <code>K</code> and <code>X</code> can be estimated from the cross-correlation function of historical SBRIDGE and Banagher records once concurrent data exists. Encoding the Muskingum relationship as a physics loss term constrains the NN to respect the upstream propagation delay.</p>
+
+  <h3 id="s6">2.4 Recession Dynamics and Storage-Discharge Relationships</h3>
+  <p>After a flood peak, river level recession follows from the depletion of catchment storage. For a linear reservoir (storage <code>S ∝ Q</code>), the recession is exponential:</p>
+
+  <div class="eq">
+    <div class="eq-label">Exponential Recession</div>
+    <pre>Q(t)  =  Q₀ · exp(−t / K_r)
+
+equivalently for stage:
+
+h(t)  =  h_base  +  (h_peak − h_base) · exp(−t / K_r)
+
+where K_r = recession constant  [days]
+      h_base = asymptotic low-flow stage
+      h_peak = stage at recession onset</pre>
+  </div>
+
+  <p>For nonlinear storage (the more general case, applicable when floodplain inundation creates a non-proportional storage volume):</p>
+
+  <div class="eq">
+    <div class="eq-label">Nonlinear Recession (Power Law)</div>
+    <pre>dQ/dt  =  −α · Q^β
+
+where α, β are catchment-specific parameters estimated from recession limbs in the historical record.</pre>
+  </div>
+
+  <p>The 35-year daily record at Station 25017 contains sufficient recession events to estimate both <code>K_r</code> (linear case) and <code>α, β</code> (power law case) empirically. These parameters enter the physics loss as a constraint: during confirmed recession periods (defined as events where upstream levels are falling and no new rainfall proxy is detected), the model should not predict a rise.</p>
+</section>
+
+<!-- 3. PIML FRAMEWORK -->
+<section class="section" id="s7">
+  <h2>Physics-Informed ML Framework</h2>
+
+  <h3 id="s8">3.1 Composite Loss Function</h3>
+  <p>The total training loss is a weighted sum of a data fidelity term and multiple physics constraint terms:</p>
+
+  <div class="eq">
+    <div class="eq-label">Total Loss</div>
+    <pre>L_total  =  L_data  +  λ₁·L_pde  +  λ₂·L_recession  +  λ₃·L_routing  +  λ₄·L_bounds
+
+where λ₁, λ₂, λ₃, λ₄ ∈ ℝ⁺ are hyperparameters controlling the relative weight
+of each physics term against the data fidelity term.</pre>
+  </div>
+
+  <div class="note">The λ values are not arbitrary — they should be set such that each physics term contributes comparably to the gradient magnitude during early training. A common initialisation strategy is to set each λ so that the initial magnitude of each physics loss term is approximately equal to L_data. Dynamic weighting schemes (e.g. learning-rate-like adaptive λ updates) have been shown to improve convergence in multi-objective PINN training [Wang et al., 2021].</div>
+
+  <h3 id="s9">3.2 Physics Loss Terms — Definitions</h3>
+
+  <p><strong>L_data — Data Fidelity</strong></p>
+  <div class="eq">
+    <pre>L_data  =  (1/N) · Σᵢ Σₖ wₖ · (ĥ(tᵢ + Δtₖ) − h(tᵢ + Δtₖ))²
+
+where Δtₖ ∈ {1h, 6h, 12h, 24h, 48h}  (forecast horizons)
+      wₖ = horizon weight (down-weight longer horizons if data is sparse)
+      ĥ  = model prediction, h = observed level</pre>
+  </div>
+
+  <p><strong>L_pde — Kinematic Wave Residual</strong></p>
+  <p>Under the kinematic wave approximation (appropriate for the mild-slope Shannon main channel), the PDE simplifies to:</p>
+  <div class="eq">
+    <pre>∂h/∂t  +  c(h) · ∂h/∂x  =  0
+
+where c(h) = dQ/dA  (kinematic wave celerity, derived from Manning's)
+
+L_pde  =  Σ_collocation_points  (∂ĥ/∂t  +  c(ĥ) · ∂ĥ/∂x)²
+
+Spatial gradient ∂ĥ/∂x estimated using finite difference between SBRIDGE and Banagher
+when both stations are operational.</pre>
+  </div>
+
+  <p><strong>L_recession — Recession Monotonicity Constraint</strong></p>
+  <div class="eq">
+    <pre>L_recession  =  Σ_recession_windows  ReLU(dĥ/dt)
+
+A training point t is in a recession window if:
+  (a) h(t) > h_peak_threshold  (above some minimum level to exclude baseflow oscillation)
+  (b) h_upstream(t) is falling (dI/dt < 0, if upstream station available)
+  (c) no precipitation proxy signal exceeds a minimum threshold
+
+ReLU(x) = max(0, x) — zero loss if the model predicts falling, positive penalty if it predicts rising.</pre>
+  </div>
+
+  <p><strong>L_routing — Muskingum Consistency (requires SBRIDGE)</strong></p>
+  <div class="eq">
+    <pre>L_routing  =  Σᵢ  (ĥ_banagher(tᵢ + K̂)  −  f_muskingum(h_sbridge(tᵢ)))²
+
+where K̂ is the estimated travel time (hours) from cross-correlation analysis
+and f_muskingum is the Muskingum routing equation evaluated with estimated K, X.</pre>
+  </div>
+
+  <p><strong>L_bounds — Physical Rise Rate Constraint</strong></p>
+  <div class="eq">
+    <pre>L_bounds  =  Σᵢ  ReLU(|dĥ/dt|  −  (dh/dt)_max(ĥᵢ))
+
+(dh/dt)_max  =  Q_max(h) / (W(h) · Δx)
+
+If channel geometry is unavailable, use an empirically derived bound:
+  (dh/dt)_max = P95 of observed |dh/dt| from the 15-minute historical record ≈ 0.03 m/hr</pre>
+  </div>
+</section>
+
+<!-- 4. ARCHITECTURE -->
+<section class="section" id="s10">
+  <h2>Proposed Network Architectures</h2>
+  <p>Three architectures are considered, in order of increasing theoretical rigour and implementation complexity.</p>
+
+  <h3 id="s11">Option A — LSTM with Physics-Penalised Loss</h3>
+  <p>A standard encoder-decoder LSTM trained with the composite loss defined in Section 3. This is the pragmatic starting point.</p>
+
+  <div class="arch-diagram">Input sequence (window W=96 steps = 24h at 15-min resolution):
+  [h(t-W), h(t-W+1), ..., h(t)]          ← Banagher level history
+  [h_sb(t-W), ..., h_sb(t)]              ← SBRIDGE level history (Phase 2+)
+  [sin(2πDoY/365), cos(2πDoY/365)]       ← Day-of-year encoding (cyclical)
+  [sin(2πHoD/24), cos(2πHoD/24)]         ← Hour-of-day encoding
+  [ΔP_proxy(t), ΔP_proxy(t-1), ...]      ← Rainfall proxy (optional)
+        │
+        ▼
+  LSTM Encoder  [hidden=128, layers=2, dropout=0.2]
+        │
+        ▼
+  FC Bottleneck  [64 units, ReLU]
+        │
+        ├──► Head T+1h   [linear, 1 unit]
+        ├──► Head T+6h   [linear, 1 unit]
+        ├──► Head T+12h  [linear, 1 unit]
+        ├──► Head T+24h  [linear, 1 unit]
+        └──► Head T+48h  [linear, 1 unit]
+
+Loss:  L_total = L_data + λ₁L_recession + λ₂L_routing + λ₃L_bounds
+</div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Value</th><th>Rationale</th></tr></thead>
+      <tbody>
+        <tr><td>Window W</td><td>96 steps (24h)</td><td>Captures diurnal cycle and recent trend fully</td></tr>
+        <tr><td>LSTM hidden</td><td>128</td><td>Sufficient for sequence of this complexity; avoids overfitting on limited training data</td></tr>
+        <tr><td>LSTM layers</td><td>2</td><td>Two layers capture both short-term fluctuation and longer trend</td></tr>
+        <tr><td>Dropout</td><td>0.2</td><td>Applied between LSTM layers; regularises given limited training samples</td></tr>
+        <tr><td>Optimiser</td><td>AdamW, lr=1e-3</td><td>Weight decay regularisation assists with physics-constrained training</td></tr>
+        <tr><td>Batch size</td><td>64 sequences</td><td>Balance between gradient noise and memory</td></tr>
+        <tr><td>λ₁ (recession)</td><td>0.1 (initial)</td><td>Tune to match gradient magnitude of L_data</td></tr>
+        <tr><td>λ₂ (routing)</td><td>0.2 (once SBRIDGE live)</td><td>Higher weight given routing is the dominant physics signal</td></tr>
+        <tr><td>λ₃ (bounds)</td><td>0.05</td><td>Soft constraint; violations are rare in well-behaved training data</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="s12">Option B — Residual Hybrid (Physics First-Pass + NN Correction)</h3>
+  <p>The most interpretable architecture for a research paper. The physical model runs first, producing a first-pass estimate. The neural network learns only the residual correction.</p>
+
+  <div class="arch-diagram">Stage 1 — Physics Model (deterministic, no learning):
+  h_phys(t+Δt) = Muskingum_route(h_sbridge, K, X) + recession_curve_extrapolation(h(t), K_r)
+
+Stage 2 — Residual NN:
+  Δh_nn(t+Δt) = NN(h(t-W:t), h_sb(t-W:t), h_phys(t+Δt), season_encoding)
+
+Final prediction:
+  ĥ(t+Δt) = h_phys(t+Δt) + Δh_nn(t+Δt)
+
+Loss:
+  L_total = MSE(ĥ, h) + λ · ||Δh_nn||²    ← L2 penalty on residual magnitude
+                                               (encourages physics model to do the heavy lifting)</div>
+
+  <p>The L2 regularisation on <code>Δh_nn</code> serves as an Occam's razor: the network is penalised for learning large corrections, pushing the solution toward the physical model whenever the data are consistent with it. Under low-data conditions (early deployment, sparse training), this architecture degrades gracefully to the physics-only estimate, which is the desired behaviour.</p>
+
+  <h3 id="s13">Option C — Neural ODE (Continuous-Time Dynamics)</h3>
+  <p>The system state evolves continuously. Rather than predicting discrete future values, a Neural ODE learns the right-hand side of the ODE governing <code>dh/dt</code>:</p>
+
+  <div class="eq">
+    <div class="eq-label">Neural ODE Formulation</div>
+    <pre>dh/dt  =  f_phys(h, h_sb, t)  +  f_nn(h, h_sb, t; θ)
+
+where:
+  f_phys  =  physics term (kinematic wave, Manning's-derived)
+  f_nn    =  small feedforward network with parameters θ
+  θ       =  learned via gradient through ODE solver (adjoint method)
+
+Forecast: integrate from t₀ to t₀ + Δt using Runge-Kutta (RK4 or Dormand-Prince)</pre>
+  </div>
+
+  <p>This architecture is theoretically the cleanest PINN formulation, as the physical law is encoded at the derivative level rather than as a loss penalty. It requires a differentiable ODE solver (PyTorch: <code>torchdiffeq</code>; JAX: <code>diffrax</code>) and is significantly more computationally expensive to train than Options A and B. It is recommended as a Phase 3 investigation after Options A and B have been validated.</p>
+</section>
+
+<!-- 5. INPUT FEATURES -->
+<section class="section" id="s14">
+  <h2>Input Feature Engineering</h2>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Feature</th><th>Source</th><th>Encoding</th><th>Physical rationale</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>h(t − W : t)</td>
+          <td>Station 25017 (OPW)</td>
+          <td>Raw [m], standardised</td>
+          <td>Autoregressive signal — dominant predictor of near-term level</td>
+        </tr>
+        <tr>
+          <td>h_sb(t − W : t)</td>
+          <td>SBRIDGE station (OPW)</td>
+          <td>Raw [m], standardised</td>
+          <td>Upstream indicator; flood wave arrives at Banagher ~K hours after SBRIDGE peak</td>
+        </tr>
+        <tr>
+          <td>dh/dt(t)</td>
+          <td>Derived from h</td>
+          <td>Finite difference, m/hr</td>
+          <td>Current rise/fall rate; reduces the burden on the LSTM to infer dynamics from level alone</td>
+        </tr>
+        <tr>
+          <td>Day-of-year</td>
+          <td>Timestamp</td>
+          <td>sin(2π·DoY/365), cos(2π·DoY/365)</td>
+          <td>Seasonal soil moisture state: near-zero ET and saturated soils in winter amplify runoff response</td>
+        </tr>
+        <tr>
+          <td>Hour-of-day</td>
+          <td>Timestamp</td>
+          <td>sin(2π·HoD/24), cos(2π·HoD/24)</td>
+          <td>Diurnal ET cycle; minor effect on Shannon given lowland, groundwater-influenced system</td>
+        </tr>
+        <tr>
+          <td>Cumulative recent Δh</td>
+          <td>Derived</td>
+          <td>Σ ReLU(dh/dt) over past 72h [m]</td>
+          <td>Proxy for recent net inflow; substitutes for rainfall where rainfall data is unavailable</td>
+        </tr>
+        <tr>
+          <td>Rainfall (Met Éireann)</td>
+          <td>Met Éireann API (optional)</td>
+          <td>Spatial average over Shannon catchment [mm/hr]</td>
+          <td>Primary driver of flood events; inclusion would substantially improve multi-day forecasts</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">The cumulative recent Δh proxy is a crude substitute for direct rainfall. The Shannon catchment is large (~11,700 km²) and the lag between rainfall and river response ranges from hours (direct runoff from saturated soils) to weeks (groundwater drainage through karstic limestone). A direct rainfall input from Met Éireann gridded analysis would be strongly preferable for multi-day forecasting and is recommended for the full research implementation.</div>
+</section>
+
+<!-- 6. FAILURE OF PRIOR ML -->
+<section class="section" id="s15">
+  <h2>Failure Analysis of Prior ML Approach</h2>
+  <p>An earlier EDA session (notebook: <code>water_levels_banagher.ipynb</code>) attempted an XGBoost regression using time-decomposed calendar features. The model performed poorly. The failure is instructive and motivates the physics-informed approach.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Feature used</th><th>Physical meaning</th><th>Limitation</th></tr></thead>
+      <tbody>
+        <tr><td>hour</td><td>Diurnal cycle (minor effect on lowland river)</td><td>Provides no event signal</td></tr>
+        <tr><td>dayofweek</td><td>None physically meaningful</td><td>Spurious correlation only</td></tr>
+        <tr><td>quarter / month</td><td>Seasonal soil moisture state</td><td>Provides prior probability of flooding, not actual event prediction</td></tr>
+        <tr><td>year</td><td>Long-term trend, if any</td><td>Insufficient samples for meaningful trend detection; potential data leakage</td></tr>
+        <tr><td>dayofyear</td><td>Smooth seasonal proxy</td><td>Same limitation as month: seasonal prior, not event signal</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The fundamental error was attempting to predict a physically driven, event-triggered process from calendar features alone. The calendar tells you that December is more likely to flood than August. It cannot tell you whether it is currently raining in Roscommon. Without a signal representing the actual state of the system — recent water levels, upstream levels, or rainfall — no calendar-based model can produce a meaningful forecast beyond climatological base rates.</p>
+
+  <p>Additionally, the XGBoost model was trained as a regression over static feature vectors, discarding temporal autocorrelation structure. River levels exhibit strong autocorrelation over multi-day windows: the best single predictor of <code>h(t+1h)</code> is <code>h(t)</code>, followed by <code>h(t-1h)</code>, etc. A sequence model (LSTM, Transformer) captures this structure by design; a tabular gradient boosting model does not.</p>
+
+  <div class="note">The physics-informed LSTM proposed here addresses both failures simultaneously: it ingests the recent level sequence (capturing autocorrelation) and explicitly constrains the solution to physically plausible trajectories (reducing error propagation at longer horizons).</div>
+</section>
+
+<!-- 7. SHANNON COMPLICATIONS -->
+<section class="section" id="s16">
+  <h2>Shannon-Specific Physical Complications</h2>
+
+  <h3>7.1 ESB Ardnacrusha Management</h3>
+  <p>Ardnacrusha hydroelectric station (ESB) operates Parteen Weir on the lower Shannon, drawing water from Lough Derg and controlling outflow into the Tailrace canal. This introduces a managed, human-determined component to the Shannon's flow regime that is not captured by any purely physics-based routing model. During periods of active management (which includes low-flow summer periods and flood mitigation decisions), observed water levels at Banagher may diverge substantially from levels predicted by natural routing alone.</p>
+  <p>Ideally, ESB's daily outflow decisions at Parteen Weir would be incorporated as a model input. This data is not publicly available in real time. This is a material limitation for any predictive model of the middle Shannon. It should be prominently stated in any paper derived from this research.</p>
+
+  <h3>7.2 Floodplain Storage Non-linearity</h3>
+  <p>The Shannon Callows — traditional flood meadows extending ~30 km between Athlone and Portumna — provide large-volume lateral storage when the river overtops its banks. As the level rises through the flood range, the effective width <code>W(h)</code> increases dramatically. This non-linearity means that rise rates slow significantly once inundation is established: each additional cubic metre of inflow raises the level far less than it would in-bank. A linear rise rate assumption (as in the rolling-slope estimator) systematically overestimates rise rates in the flood zone. The physics loss term <code>L_bounds</code> can be made depth-dependent to capture this, requiring only an approximate estimate of the floodplain area-stage curve at Banagher.</p>
+
+  <h3>7.3 Karstic Groundwater Contributions</h3>
+  <p>Parts of the upper Shannon catchment overlie Carboniferous limestone. Karstic conduit flow introduces a delayed, temporally dispersed contribution to river discharge that standard surface-water routing models do not represent. Empirically, this manifests as a long baseflow recession constant <code>K_r</code> (estimated 8–15 days from the 35-year record) and a sometimes non-monotonic response to rainfall events (level may rise days after rainfall stops, as karstic storage drains). Any model trained without awareness of this behaviour will show systematic forecast errors following large rainfall events.</p>
+
+  <h3>7.4 Lough Derg and Lough Ree as Buffers</h3>
+  <p>The two large lakes on the Shannon system act as reservoirs that attenuate flood peaks and extend the duration of high-water events. A flood wave entering Lough Ree from the north-west is partially attenuated by lake storage before emerging at the southern outlet. This is an additional routing complexity that should be accounted for in multi-day forecasts. In the physics model, each lake can be approximated as a linear reservoir with a characteristic storage time constant <code>K_lake</code> estimated from observed inflow-outflow records.</p>
+</section>
+
+<!-- 8. DATA REQUIREMENTS -->
+<section class="section" id="s17">
+  <h2>Data Requirements</h2>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Dataset</th><th>Source</th><th>Status</th><th>Required for</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Station 25017 — 15-min level, full record</td>
+          <td>OPW / waterlevel.ie</td>
+          <td>Partial (EDA subset read)</td>
+          <td>All phases — primary training data</td>
+        </tr>
+        <tr>
+          <td>SBRIDGE — 15-min level (Station 25061 candidate)</td>
+          <td>OPW</td>
+          <td>Not yet integrated</td>
+          <td>L_routing constraint; upstream input feature</td>
+        </tr>
+        <tr>
+          <td>Channel cross-section at Banagher Bridge</td>
+          <td>OPW CFRAM / OSi survey</td>
+          <td>Not obtained</td>
+          <td>L_pde (St. Venant residual); L_bounds (Manning's)</td>
+        </tr>
+        <tr>
+          <td>Rainfall — catchment average or gridded</td>
+          <td>Met Éireann historical reanalysis / API</td>
+          <td>Not obtained</td>
+          <td>Strongly improves multi-day forecast accuracy</td>
+        </tr>
+        <tr>
+          <td>ESB Parteen Weir outflow</td>
+          <td>ESB (not publicly available)</td>
+          <td>Unavailable</td>
+          <td>Mitigating managed-flow confounding</td>
+        </tr>
+        <tr>
+          <td>OPW CFRAM hydraulic model outputs</td>
+          <td>OPW (reports publicly available)</td>
+          <td>TD_HYDR_0114 not yet read</td>
+          <td>Channel geometry, Manning's n, flood extent maps</td>
+        </tr>
+        <tr>
+          <td>Hydrometric stations register 2021</td>
+          <td>OPW</td>
+          <td>File present, not read</td>
+          <td>Confirm SBRIDGE station ID; zero-of-gauge for datum correction</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">The minimum viable dataset for a first PIML experiment is: (1) Station 25017 at 15-min resolution for ≥2 years, covering multiple flood seasons; (2) a recession constant <code>K_r</code> estimated from the existing 35-year daily record. The SBRIDGE and rainfall inputs substantially improve forecast skill but are not required for the initial proof-of-concept.</div>
+</section>
+
+<!-- 9. EXPERIMENTAL PLAN -->
+<section class="section" id="s18">
+  <h2>Experimental Plan</h2>
+
+  <div class="phase-grid">
+    <div class="phase-card">
+      <div class="phase-num">Phase 1</div>
+      <div class="phase-title">Baseline — Rolling Slope</div>
+      <div class="phase-detail">Current deployed system. Deterministic. Establishes the benchmark RMSE at each forecast horizon against which all subsequent models are compared.</div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Phase 2</div>
+      <div class="phase-title">Physics-Only Forecast</div>
+      <div class="phase-detail">Muskingum routing + Manning's recession curve, no ML. Establishes the physics-only ceiling. Requires SBRIDGE station integration and recession constant estimation from 35-yr record.</div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Phase 3</div>
+      <div class="phase-title">LSTM — Data Only</div>
+      <div class="phase-detail">Pure LSTM (Option A, L_data only, no physics penalties). Establishes the pure data-driven ceiling and identifies at which horizons physics constraints are needed.</div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Phase 4</div>
+      <div class="phase-title">PIML — LSTM + Physics Loss</div>
+      <div class="phase-detail">Full Option A: LSTM with composite loss including L_recession, L_routing (once SBRIDGE live), L_bounds. Primary research contribution.</div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Phase 5</div>
+      <div class="phase-title">Residual Hybrid (Option B)</div>
+      <div class="phase-detail">Physics first-pass + NN residual correction. Comparison of interpretability vs. accuracy trade-off relative to Phase 4.</div>
+    </div>
+    <div class="phase-card">
+      <div class="phase-num">Phase 6</div>
+      <div class="phase-title">Neural ODE (Option C)</div>
+      <div class="phase-detail">Continuous-time dynamics formulation. Most rigorous architecture; requires torchdiffeq or diffrax. Final comparison against Phases 3–5.</div>
+    </div>
+  </div>
+
+  <h3>Evaluation Protocol</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Metric</th><th>Definition</th><th>Why used</th></tr></thead>
+      <tbody>
+        <tr><td>RMSE at each horizon</td><td>√(1/N · Σ(ĥ−h)²) [m]</td><td>Primary accuracy metric; interpretable in physical units</td></tr>
+        <tr><td>MAE at each horizon</td><td>1/N · Σ|ĥ−h| [m]</td><td>Robust to outliers; comparable to rolling-slope error</td></tr>
+        <tr><td>Physics violation rate</td><td>Fraction of predictions violating each physics constraint</td><td>Directly measures whether PIML constraints are effective</td></tr>
+        <tr><td>Flood event hit rate</td><td>Fraction of flood events where ĥ(t+Δt) > threshold given h(t) < threshold</td><td>Operational metric: does the model give advance warning?</td></tr>
+        <tr><td>False alarm rate</td><td>Fraction of warnings not followed by an actual flood event</td><td>Operational usability; too many false alarms render SMS alerts useless</td></tr>
+        <tr><td>NSE (Nash-Sutcliffe)</td><td>1 − Σ(ĥ−h)² / Σ(h̄−h)²</td><td>Standard hydrological model performance criterion [NSE ≥ 0.70 = acceptable, ≥ 0.90 = excellent]</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Training/validation/test split: use a temporal split (not random). Suggested: 1989–2010 training, 2011–2017 validation, 2018–2024 test. The test period includes several significant Shannon flood events (2015–16 season, 2023–24 season) and must not be used during hyperparameter tuning.</p>
+</section>
+
+<!-- 10. LIMITATIONS -->
+<section class="section" id="s19">
+  <h2>Limitations and Open Questions</h2>
+
+  <p><strong>ESB management confounding.</strong> As noted in Section 7.1, human regulation of the Shannon at Parteen Weir introduces a managed component to water levels at Banagher that is unobservable in the model's input features. Any PIML model will attribute ESB management decisions to unexplained residual, reducing predictive accuracy during managed-flow periods. Without ESB operational data, this cannot be fully resolved.</p>
+
+  <p><strong>Training data volume.</strong> At 15-minute resolution, two years of continuous data provides approximately 70,000 training timesteps. After windowing (W=96) this reduces to ~69,000 training sequences. While sufficient for LSTM training in principle, the number of flood events in any two-year period is small (typically 5–15 events above threshold depending on the year). The model may be data-sparse for the specific high-level regime that is operationally most important. Active learning strategies or augmentation of flood events may be required.</p>
+
+  <p><strong>Non-stationarity.</strong> The 35-year record encompasses significant changes in land use, drainage engineering, and potentially the beginning of detectable climate-driven changes in flood frequency. A model trained on 1989–2010 data may not generalise perfectly to the 2018–2024 test period. Rolling retraining as new data accumulates is advisable in deployment.</p>
+
+  <p><strong>Channel geometry unavailability.</strong> Without a surveyed cross-section at Banagher Bridge, the Manning's-derived rise rate bound must be estimated empirically from the historical record (e.g., <code>P95 of |dh/dt|</code>). This is a weaker constraint than a physics-derived bound and may admit physically implausible predictions during extreme events.</p>
+
+  <p><strong>No probabilistic calibration.</strong> The architectures described in Section 4 produce point estimates. Operational flood warning requires calibrated uncertainty quantification — the model should communicate not just a predicted level but a confidence interval. Extensions to probabilistic output include Monte Carlo Dropout, Deep Ensembles, or Conformalized Prediction, each of which is straightforward to add to Options A and B post-training.</p>
+
+  <p><strong>Downstream influence from tidal effects.</strong> The River Shannon discharges into the Shannon Estuary. Tidal backwater effects propagate upstream during high-tide, low-flow conditions. At Banagher (approximately 160 km from the estuary mouth), tidal influence is negligible except potentially in extreme drought conditions. It is listed here for completeness and can be excluded from the initial model.</p>
+</section>
+
+<!-- REFERENCES -->
+<section class="section" id="s20">
+  <h2>References</h2>
+  <ol class="ref-list">
+    <li>Raissi, M., Perdikaris, P., &amp; Karniadakis, G.E. (2019). <em>Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations.</em> Journal of Computational Physics, 378, 686–707.</li>
+    <li>Shen, C. (2018). <em>A transdisciplinary review of deep learning research and its relevance for water resources scientists.</em> Water Resources Research, 54(11), 8558–8593.</li>
+    <li>Nearing, G.S. et al. (2021). <em>What role does hydrological science play in the age of machine learning?</em> Water Resources Research, 57(3), e2020WR028091.</li>
+    <li>Read, J.S. et al. (2019). <em>Process-guided deep learning predictions of lake water temperature.</em> Water Resources Research, 55(11), 9173–9190.</li>
+    <li>Daw, A. et al. (2022). <em>Physics-guided architecture (PGA) of neural networks for quantifying uncertainty in lake temperature modeling.</em> Proceedings of the SIAM International Conference on Data Mining.</li>
+    <li>Wang, S., Teng, Y., &amp; Perdikaris, P. (2021). <em>Understanding and mitigating gradient flow pathologies in physics-informed neural networks.</em> SIAM Journal on Scientific Computing, 43(5), A3055–A3081.</li>
+    <li>Chen, R.T.Q. et al. (2018). <em>Neural ordinary differential equations.</em> Advances in Neural Information Processing Systems, 31.</li>
+    <li>Jiang, S. et al. (2020). <em>Improving AI robustness through domain knowledge: Watershed hydrology as a test case.</em> arXiv:2001.08113.</li>
+    <li>Chaudhary, A., Hobson, P., &amp; Butts, M. (2017). <em>Multi-output machine learning models for real-time flood forecasting.</em> Journal of Hydrology, 548, 657–675.</li>
+    <li>Office of Public Works (OPW). <em>Waterlevel.ie — National Hydrometric Monitoring Network.</em> Ireland. Retrieved from https://waterlevel.ie</li>
+    <li>Office of Public Works (OPW). <em>Catchment Flood Risk Assessment and Management (CFRAM) — Shannon River Basin.</em> Technical Hydrological Report TD_HYDR_0114.</li>
+    <li>Nash, J.E. &amp; Sutcliffe, J.V. (1970). <em>River flow forecasting through conceptual models part I — A discussion of principles.</em> Journal of Hydrology, 10(3), 282–290.</li>
+    <li>Chow, V.T. (1959). <em>Open-channel hydraulics.</em> McGraw-Hill, New York. [Manning's equation and kinematic wave theory]</li>
+    <li>Muskingum-Cunge routing: Cunge, J.A. (1969). <em>On the subject of a flood propagation method.</em> Journal of Hydraulic Research, 7(2), 205–230.</li>
+  </ol>
+</section>
+
+</main>
+</div>
+
+<script>
+(function(){
+  // Active TOC highlighting
+  const sections = document.querySelectorAll('.section[id], section[id]');
+  const links = document.querySelectorAll('.toc a');
+
+  function setActive(){
+    let cur='';
+    sections.forEach(s=>{
+      if(s.getBoundingClientRect().top <= 100) cur = s.id;
+    });
+    links.forEach(a=>{
+      a.classList.toggle('active', a.getAttribute('href')==='#'+cur);
+    });
+  }
+  window.addEventListener('scroll', setActive, {passive:true});
+  setActive();
+
+  links.forEach(a=>{
+    a.addEventListener('click', e=>{
+      e.preventDefault();
+      const t = document.getElementById(a.getAttribute('href').slice(1));
+      if(t) t.scrollIntoView({behavior:'smooth', block:'start'});
+    });
+  });
+
+  // Set initial theme toggle label
+  const btn = document.getElementById('themeBtn');
+  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if(btn && dark) btn.textContent = '☀ light';
+})();
+</script>

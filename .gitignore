@@ -1,0 +1,51 @@
+# System
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# Data — excluded from PIML (not used in this project)
+tsvalues_temp.csv
+25061_*.csv
+
+# Raw downloads (data committed in data/ directory instead)
+Waterlevel_complete.zip
+WaterTemperature_complete.zip
+
+# Reference materials (not project outputs)
+*.numbers
+Register_Hydrometric_Stations_Ireland_2021.xlsx
+TD_HYDR_*.pdf
+Rainfall_Wind_Speed*.pdf
+flood_analysis.pdf
+
+# Figures — PDF versions (PNG committed in figures/)
+*.pdf
+
+# Scraper scripts (unrelated to this project)
+hiberniascraper.py
+hiberniascraperNewer.py
+wikiscraper.py
+
+# Working directories
+downloaded_images/
+downloaded_media/
+Claude outputs/
+
+# Deployment files — see shannon-flood-deploy repo
+banagher_flood_monitor.html
+flood_tool.html
+
+# Screenshots and reference images
+Waterlevel_*.png
+Waterlevel_*.zip
