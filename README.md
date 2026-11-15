@@ -5,6 +5,13 @@ Daniel Burke — AMR Aero
 
 A research implementation of Physics-Informed Machine Learning (PIML) for multi-horizon flood stage forecasting. An LSTM neural network is trained with a composite physics-informed loss function encoding hydraulic constraints derived from the 35-year record at Station 25017.
 
+**What this demonstrates:**
+- Encoding domain-specific physical constraints (hydraulic rise rate bounds, recession monotonicity) directly into a neural network loss function
+- Empirically deriving physics parameters (P95 rise rate, recession constant K_r) from a 35-year gauge record and using them without hardcoding
+- Ablation methodology to isolate the contribution of individual physics terms — showing that L_bounds alone accounts for a 75% reduction in physical violation rate with no degradation in forecast accuracy
+
+![Phase 1 comparison](figures/1c_vs_1d_comparison.png)
+
 ---
 
 ## Motivation
