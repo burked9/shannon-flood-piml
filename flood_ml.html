@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Flood ML</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 
@@ -517,7 +518,7 @@ tr:last-child td { border-bottom: none; }
     <span>Station: 25017 · Banagher Bridge · River Shannon</span>
     <span>Record: 1989–present (35 years daily; 15-min interval subset)</span>
     <span>Status: Pre-deployment research</span>
-    <span>Last revised: 2026-11-05</span>
+    <span>Last revised: 2026-11-15</span>
   </div>
 </header>
 
@@ -530,6 +531,7 @@ tr:last-child td { border-bottom: none; }
     <a href="#s4" class="sub">2.2 Manning's equation</a>
     <a href="#s5" class="sub">2.3 Flood wave routing</a>
     <a href="#s6" class="sub">2.4 Recession dynamics</a>
+    <a href="#s6b" class="sub">2.5 CFRAM parameters</a>
     <a href="#s7">3. PIML Framework</a>
     <a href="#s8" class="sub">3.1 Loss function</a>
     <a href="#s9" class="sub">3.2 Physics terms defined</a>
@@ -603,7 +605,23 @@ where W(h) = top width of water surface at stage h  [m]
       Δx   = representative reach length  [m]</pre>
   </div>
 
-  <p>For the Shannon at Banagher, the channel gradient is approximately <code>S₀ ≈ 5×10⁻⁵ m/m</code> (very flat), and the floodplain width <code>W</code> in flood conditions is several hundred metres. Both factors suppress <code>(dh/dt)_max</code> and explain the multi-day flood durations observed in the historical record.</p>
+  <p>For the Shannon at Banagher, the channel gradient is approximately <code>S₀ ≈ 2×10⁻⁵ m/m</code> (1 in 50,000 — confirmed from the OPW/Jacobs CFRAM longitudinal section, Figure 1.2 [15]), and the main channel width at Banagher Bridge is <code>W ≈ 160 m</code> (observed), varying 100–180 m in the reach upstream. Both factors suppress <code>(dh/dt)_max</code> and explain the multi-day flood durations observed in the historical record.</p>
+
+  <p>Applying Manning's equation at the operational flood threshold (stage <code>h ≈ 2.695 m</code> above gauge datum, treating gauge zero ≈ bed level as a first approximation, <code>n = 0.033</code>):</p>
+
+  <div class="eq">
+    <div class="eq-label">Manning's — Numerical Example at Flood Threshold</div>
+    <pre>Q  =  (W/n) · h^(5/3) · S₀^(1/2)
+   =  (160/0.033) · 2.695^(5/3) · (2×10⁻⁵)^(1/2)
+   =  4,848  ·  5.22  ·  0.00447
+   ≈  113 m³/s
+
+Observed long-term mean Q at Banagher (CFRAM Table 1.1) ≈ 130 m³/s.
+Agreement is consistent: the threshold stage sits slightly above normal conditions,
+where flow is modestly below the long-term mean. Manning's calibrates without fitting.</pre>
+  </div>
+
+  <p>Once the river overtops the banks and inundates the callows floodplain, the effective storage width increases to several hundred metres. The same net inflow now fills a far larger cross-sectional area, so <code>dh/dt</code> falls significantly even as discharge remains high. This non-linear width-stage relationship is a key feature of the Shannon callows system and motivates the stage-dependent formulation of <code>L_bounds</code>.</p>
 
   <h3 id="s5">2.3 Flood Wave Routing — Muskingum Method</h3>
   <p>When an upstream station (SBRIDGE) is added to the monitoring network, the propagation of a flood wave between stations can be described by the Muskingum routing model:</p>
@@ -652,7 +670,57 @@ where K_r = recession constant  [days]
 where α, β are catchment-specific parameters estimated from recession limbs in the historical record.</pre>
   </div>
 
-  <p>The 35-year daily record at Station 25017 contains sufficient recession events to estimate both <code>K_r</code> (linear case) and <code>α, β</code> (power law case) empirically. These parameters enter the physics loss as a constraint: during confirmed recession periods (defined as events where upstream levels are falling and no new rainfall proxy is detected), the model should not predict a rise.</p>
+  <p>The 35-year daily record at Station 25017 contains sufficient recession events to estimate both <code>K_r</code> (linear case) and <code>α, β</code> (power law case) empirically. Exponential decay was fitted to 159 of 260 peaks above threshold using <code>scipy.optimize.curve_fit</code>. Results:</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Statistic</th><th>K_r [days]</th><th>Interpretation</th></tr></thead>
+      <tbody>
+        <tr><td>Median</td><td>20.1</td><td>Typical event: ~20 days from peak back toward baseflow. Used in L_recession.</td></tr>
+        <tr><td>Mean</td><td>28.4</td><td>Right-skewed by prolonged winter events; less representative than median.</td></tr>
+        <tr><td>P25–P75</td><td>9.4 – 44.8</td><td>Wide spread reflects seasonal and magnitude variation (summer events drain faster; large winter floods can persist 6–12 weeks).</td></tr>
+        <tr><td>Range</td><td>3.0 – 89.3</td><td>Short events: summer, dry antecedent conditions. Long events: saturated winter catchment, karstic groundwater drainage, lake buffering.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The wide interquartile range (9–45 days) is physically real. Drivers include: season (high ET and drier soils accelerate summer recession), event magnitude (larger floodplain inundation takes longer to drain through the relatively narrow main channel), and ESB Ardnacrusha management (operational decisions at Parteen Weir affect apparent recession rate). These parameters enter the physics loss as a constraint: during confirmed recession periods (defined as events where upstream levels are falling and no new rainfall proxy is detected), the model should not predict a rise.</p>
+
+  <h3 id="s6b">2.5 Empirical Hydraulic Parameters — CFRAM Literature</h3>
+  <p>The following parameters have been extracted from the OPW/Jacobs Shannon CFRAM Level Operation Review (TD_HYDR_0114, 2012) [15], a desk-based analysis of hydrometric records and structure operating procedures for the callows reach between Athlone and Meelick Weir. These values inform the physical constraint terms and provide the dimensional grounding required for the Manning's equation and routing formulations above.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Parameter</th><th>Value</th><th>Notes / Source</th></tr></thead>
+      <tbody>
+        <tr><td>Bed slope S₀ (callows reach)</td><td>2×10⁻⁵ (1 in 50,000)</td><td>Read from Figure 1.2 longitudinal section, Athlone–Meelick reach</td></tr>
+        <tr><td>Overall Shannon gradient</td><td>1 in 15,000 (~15 m over 223 km)</td><td>§1.4; confirms extremely low-energy system</td></tr>
+        <tr><td>Catchment area at Banagher</td><td>7,980 km²</td><td>Table 1.1; total gauged + ungauged contributing area</td></tr>
+        <tr><td>Long-term average discharge (est.)</td><td>~130 m³/s</td><td>Interpolated between Athlone (98 m³/s) and Ardnacrusha (176 m³/s), Table 1.1</td></tr>
+        <tr><td>Ordinary Summer Level (OSL) at Banagher</td><td>35.36 mOD (Poolbeg)</td><td>Defined as Meelick Weir upstream target level, p.viii; applies reach-wide Athlone–Meelick</td></tr>
+        <tr><td>Athlone waterlogging trigger (summer)</td><td>36.12 mOD (Poolbeg)</td><td>Downstream (lower sill) level; Table 8.1; 27% exceedance frequency in summer record 1932–2011</td></tr>
+        <tr><td>Athlone flood onset trigger (winter)</td><td>36.42 mOD (Poolbeg)</td><td>Downstream level; Table 8.1; 18% exceedance in summer record</td></tr>
+        <tr><td>Peak discharge at Banagher — 1999/2000 winter</td><td>565 m³/s</td><td>§7.7; largest recorded winter event</td></tr>
+        <tr><td>Peak discharge at Banagher — 1-in-100 seasonal</td><td>~450 m³/s</td><td>§7.7; design flood for callows analysis</td></tr>
+        <tr><td>Suck + Brosna share during flood rising limb</td><td>>40% of gauged inflow</td><td>§9.1; rises to >60% in August 2008; dominant Athlone-bypass inflow</td></tr>
+        <tr><td>Channel width W at Banagher Bridge</td><td>160 m (observed)</td><td>Direct measurement; representative of the main channel reach. Varies 100–180 m in fields upriver. Increases substantially (>300 m effective) when callows inundated.</td></tr>
+        <tr><td>Manning's n (main channel)</td><td>0.030–0.035 (estimated)</td><td>Not stated in CFRAM; typical for large sand-bed river; requires calibration against rating curve (Phase 3)</td></tr>
+        <tr><td>Station 25017 level record</td><td>01/12/1989 – 14/06/2010</td><td>Table 6.3; OPW daily mean; 15-min autographic data also held by OPW</td></tr>
+        <tr><td>Station 26028 Shannonbridge level</td><td>01/02/1983 – 10/02/2010</td><td>Table 6.3; upstream routing predictor; ~37 km upstream of Banagher</td></tr>
+        <tr><td>Station 26027 Athlone d/s level</td><td>01/02/1972 – 14/06/2010</td><td>Table 6.3; longest continuous record; confirms Athlone trigger-level exceedances</td></tr>
+        <tr><td>Ordnance datum</td><td>Poolbeg Lighthouse (1837)</td><td>§1.5; all CFRAM levels in mOD Poolbeg. Malin Head is +2.766 m at Athlone. OPW live feed uses local gauge datum — datum offset must be established before combining records.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <strong>Datum caveat.</strong> The OPW waterlevel.ie live feed for Station 25017 is served in local gauge datum — the zero of the gauge board, not mOD Poolbeg. The relationship between the local datum zero and mOD Poolbeg has not been confirmed from public sources. The Ordinary Summer Level (35.36 mOD Poolbeg) and the Athlone flood triggers are therefore not directly comparable to the operational threshold (2.695 m in local datum) without independent datum offset verification. Recommended action: request the gauge datum description from OPW or use a concurrent period of daily mean data (from Waterlevel.ie and from ESB/WI records in mOD) to derive the offset by regression.
+  </div>
+
+  <div class="note">
+    <strong>Manning's n — calibration strategy.</strong> The report does not give an explicit Manning's n for the Banagher reach. Standard values for large lowland rivers with sand/silt bed are 0.030–0.035 for the main channel, rising to 0.08–0.12 for inundated floodplain vegetation. The most reliable calibration path is to use concurrent stage and discharge measurements (OPW rating file, available from OPW on request) with known cross-section geometry (from CFRAM bathymetric survey, 2012–2014) to back-calculate n from Manning's equation at multiple discharges. In the absence of this, n = 0.033 is a reasonable initial assumption for the main channel.
+  </div>
+
 </section>
 
 <!-- 3. PIML FRAMEWORK -->
@@ -723,7 +791,9 @@ and f_muskingum is the Muskingum routing equation evaluated with estimated K, X.
 (dh/dt)_max  =  Q_max(h) / (W(h) · Δx)
 
 If channel geometry is unavailable, use an empirically derived bound:
-  (dh/dt)_max = P95 of observed |dh/dt| from the 15-minute historical record ≈ 0.03 m/hr</pre>
+  (dh/dt)_max = P95 of observed |dh/dt| from the 15-minute historical record
+             = 0.0120 m/hr  (confirmed from 35-year record, 1989–2024)
+             = 0.0200 m/hr at P99</pre>
   </div>
 </section>
 
@@ -870,24 +940,38 @@ Forecast: integrate from t₀ to t₀ + Δt using Runge-Kutta (RK4 or Dormand-Pr
 <!-- 6. FAILURE OF PRIOR ML -->
 <section class="section" id="s15">
   <h2>Failure Analysis of Prior ML Approach</h2>
-  <p>An earlier EDA session (notebook: <code>water_levels_banagher.ipynb</code>) attempted an XGBoost regression using time-decomposed calendar features. The model performed poorly. The failure is instructive and motivates the physics-informed approach.</p>
+  <p>An earlier EDA notebook (<code>water_levels_banagher.ipynb</code>) attempted an XGBoost gradient boosting regression using time-decomposed calendar features. The model was trained on data prior to 2017-01-01 and tested on 2017–2024. The results quantify the failure mode and directly motivate the physics-informed approach.</p>
+
+  <h3>6.1 XGBoost Calendar-Feature Baseline — Results</h3>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Configuration</th><th>Train RMSE [m]</th><th>Test RMSE [m]</th><th>Stopped at</th></tr></thead>
+      <tbody>
+        <tr><td>XGBoost, n_estimators=1000, default lr</td><td>0.085</td><td>0.638</td><td>Iteration 57 (early stopping)</td></tr>
+        <tr><td>XGBoost, n_estimators=3000, lr=0.005</td><td>0.230</td><td>0.610</td><td>Iteration 655 (early stopping)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>The train/test gap (train RMSE 0.085 m vs test RMSE 0.638 m) confirms severe overfitting. The model memorises the seasonal pattern in the training period — it learns that "late December at Banagher is typically high" — but this pattern provides no skill for predicting the actual level on any given day. The 7-number summary of the 35-year record confirms the limitation: Q75 = 2.907 m (above the 2.695 m threshold) and Q90 = 3.372 m, meaning the top quarter of all readings are in flood range. Flood conditions are not rare seasonal anomalies; they are a substantial fraction of normal winter behaviour. Calendar features provide some discrimination between seasons but cannot distinguish a dry January from a flood January.</p>
 
   <div class="tbl-wrap">
     <table>
       <thead><tr><th>Feature used</th><th>Physical meaning</th><th>Limitation</th></tr></thead>
       <tbody>
-        <tr><td>hour</td><td>Diurnal cycle (minor effect on lowland river)</td><td>Provides no event signal</td></tr>
+        <tr><td>hour</td><td>Diurnal cycle (minor effect on lowland river)</td><td>Provides no event signal; feature importance negligible</td></tr>
         <tr><td>dayofweek</td><td>None physically meaningful</td><td>Spurious correlation only</td></tr>
         <tr><td>quarter / month</td><td>Seasonal soil moisture state</td><td>Provides prior probability of flooding, not actual event prediction</td></tr>
-        <tr><td>year</td><td>Long-term trend, if any</td><td>Insufficient samples for meaningful trend detection; potential data leakage</td></tr>
-        <tr><td>dayofyear</td><td>Smooth seasonal proxy</td><td>Same limitation as month: seasonal prior, not event signal</td></tr>
+        <tr><td>year</td><td>Long-term trend, if any</td><td>Highest feature importance — model exploits year-level mean differences between train (1989–2016) and test (2017–2024) periods; this is data leakage, not generalisation</td></tr>
+        <tr><td>dayofyear</td><td>Smooth seasonal proxy</td><td>Second-highest importance; provides seasonal prior only</td></tr>
       </tbody>
     </table>
   </div>
 
   <p>The fundamental error was attempting to predict a physically driven, event-triggered process from calendar features alone. The calendar tells you that December is more likely to flood than August. It cannot tell you whether it is currently raining in Roscommon. Without a signal representing the actual state of the system — recent water levels, upstream levels, or rainfall — no calendar-based model can produce a meaningful forecast beyond climatological base rates.</p>
 
-  <p>Additionally, the XGBoost model was trained as a regression over static feature vectors, discarding temporal autocorrelation structure. River levels exhibit strong autocorrelation over multi-day windows: the best single predictor of <code>h(t+1h)</code> is <code>h(t)</code>, followed by <code>h(t-1h)</code>, etc. A sequence model (LSTM, Transformer) captures this structure by design; a tabular gradient boosting model does not.</p>
+  <p>Additionally, the XGBoost model was trained as a regression over static feature vectors, discarding temporal autocorrelation structure entirely. River levels exhibit strong autocorrelation over multi-day windows: the best single predictor of <code>h(t+1h)</code> is <code>h(t)</code>, followed by <code>h(t-1h)</code>, and so on through the multi-day flood duration. A sequence model (LSTM, Transformer) captures this structure by design; a tabular gradient boosting model does not. The addition of lagged level features to the XGBoost input vector would substantially close the train/test gap, but this is precisely the structure that an LSTM encodes more naturally.</p>
 
   <div class="note">The physics-informed LSTM proposed here addresses both failures simultaneously: it ingests the recent level sequence (capturing autocorrelation) and explicitly constrains the solution to physically plausible trajectories (reducing error propagation at longer horizons).</div>
 </section>
@@ -916,92 +1000,208 @@ Forecast: integrate from t₀ to t₀ + Δt using Runge-Kutta (RK4 or Dormand-Pr
 
   <div class="tbl-wrap">
     <table>
-      <thead><tr><th>Dataset</th><th>Source</th><th>Status</th><th>Required for</th></tr></thead>
+      <thead><tr><th>Dataset</th><th>Source</th><th>Phase</th><th>Status</th><th>Required for</th></tr></thead>
       <tbody>
         <tr>
-          <td>Station 25017 — 15-min level, full record</td>
+          <td>Station 25017 — 15-min level, full record (1989–present)</td>
           <td>OPW / waterlevel.ie</td>
-          <td>Partial (EDA subset read)</td>
-          <td>All phases — primary training data</td>
+          <td>1</td>
+          <td><strong>Available</strong> — 1,218,710 readings, 1989-01-02 to 2024-03-14; local CSV export; datum correction applied (h −= 30.330 m, gauge datum = 30.330 mOD Malin Head OSGM15)</td>
+          <td>Primary training data; K_r fitting; P95 rise rate</td>
         </tr>
         <tr>
-          <td>SBRIDGE — 15-min level (Station 25061 candidate)</td>
-          <td>OPW</td>
-          <td>Not yet integrated</td>
-          <td>L_routing constraint; upstream input feature</td>
+          <td>Recession constant K_r</td>
+          <td>Derived from Station 25017 record</td>
+          <td>1</td>
+          <td><strong>Confirmed</strong> — median K_r = 20.1 days (mean 28.4 days, P25–P75: 9.4–44.8 days, range 3.0–89.3 days). Fitted to 159 of 260 peaks above threshold from the 35-year daily record. Median used in L_recession (robust to right-skewed distribution driven by prolonged winter events).</td>
+          <td>L_recession constraint; physics-only baseline</td>
         </tr>
         <tr>
-          <td>Channel cross-section at Banagher Bridge</td>
-          <td>OPW CFRAM / OSi survey</td>
+          <td>P95 observed |dh/dt|</td>
+          <td>Derived from Station 25017 15-min record</td>
+          <td>1</td>
+          <td><strong>Confirmed</strong> — P95 = 0.0120 m/hr, P99 = 0.0200 m/hr (from 1,218,710 15-min readings). Used as empirical cap in L_bounds.</td>
+          <td>L_bounds empirical rise rate cap</td>
+        </tr>
+        <tr>
+          <td>Gauge datum offset (Station 25017)</td>
+          <td>OPW / waterlevel.ie metadata</td>
+          <td>1</td>
+          <td><strong>Confirmed</strong> — 30.330 mOD (Malin Head, OSGM15)</td>
+          <td>Absolute stage reference; comparison with CFRAM levels</td>
+        </tr>
+        <tr>
+          <td>OPW CFRAM hydraulic report (TD_HYDR_0114)</td>
+          <td>OPW / Jacobs (2012)</td>
+          <td>1</td>
+          <td><strong>Read in full</strong> — key parameters extracted (S₀, OSL, flood triggers, discharge statistics)</td>
+          <td>S₀ for Manning's; flood level benchmarks; station record dates</td>
+        </tr>
+        <tr>
+          <td>Station 26028 Shannonbridge — level record (1983–2010)</td>
+          <td>OPW / waterlevel.ie</td>
+          <td>2</td>
+          <td>Not yet pulled — same API, different station ID</td>
+          <td>Muskingum K estimation; upstream input feature for L_routing</td>
+        </tr>
+        <tr>
+          <td>Station 26028 gauge datum</td>
+          <td>OPW / waterlevel.ie metadata</td>
+          <td>2</td>
           <td>Not obtained</td>
-          <td>L_pde (St. Venant residual); L_bounds (Manning's)</td>
+          <td>Aligning Shannonbridge and Banagher level scales</td>
+        </tr>
+        <tr>
+          <td>Channel cross-section at Banagher Bridge — W(h), A(h)</td>
+          <td>Field survey or OPW CFRAM bathymetry</td>
+          <td>3</td>
+          <td>Not obtained — deferred to field work phase</td>
+          <td>L_pde (Saint-Venant residual); calibrated L_bounds via Manning's</td>
+        </tr>
+        <tr>
+          <td>OPW rating curve for Station 25017</td>
+          <td>OPW (data request)</td>
+          <td>3</td>
+          <td>Not obtained — requires direct OPW contact</td>
+          <td>Manning's n calibration; stage-discharge validation</td>
         </tr>
         <tr>
           <td>Rainfall — catchment average or gridded</td>
           <td>Met Éireann historical reanalysis / API</td>
+          <td>3</td>
           <td>Not obtained</td>
-          <td>Strongly improves multi-day forecast accuracy</td>
+          <td>Improves multi-day forecast; identifies precipitation-driven events</td>
         </tr>
         <tr>
           <td>ESB Parteen Weir outflow</td>
           <td>ESB (not publicly available)</td>
-          <td>Unavailable</td>
-          <td>Mitigating managed-flow confounding</td>
-        </tr>
-        <tr>
-          <td>OPW CFRAM hydraulic model outputs</td>
-          <td>OPW (reports publicly available)</td>
-          <td>TD_HYDR_0114 not yet read</td>
-          <td>Channel geometry, Manning's n, flood extent maps</td>
-        </tr>
-        <tr>
-          <td>Hydrometric stations register 2021</td>
-          <td>OPW</td>
-          <td>File present, not read</td>
-          <td>Confirm SBRIDGE station ID; zero-of-gauge for datum correction</td>
+          <td>3</td>
+          <td>Unavailable — managed flow confounding is accepted limitation in Phase 1–2</td>
+          <td>Mitigating ESB operational signal in training data</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <div class="note warn">The minimum viable dataset for a first PIML experiment is: (1) Station 25017 at 15-min resolution for ≥2 years, covering multiple flood seasons; (2) a recession constant <code>K_r</code> estimated from the existing 35-year daily record. The SBRIDGE and rainfall inputs substantially improve forecast skill but are not required for the initial proof-of-concept.</div>
+  <div class="note">Phase 1 is achievable entirely from existing public data and desk-based computation. The Station 25017 full historical record and the two derived parameters (K_r, P95 rise rate) are the only blockers. No field work, no data requests, and no Shannonbridge access are required to begin training.</div>
+
+  <h3>8.1 Data Processing Pipeline</h3>
+
+  <p>The following preprocessing steps are applied to the raw 15-min record before any ML training. These are implemented sequentially in the analysis notebook (<code>water_levels_banagher.ipynb</code>) and must be reproducible with the same CSV export and constants.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Step</th><th>Operation</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>1. Datum correction</td>
+          <td><code>h_corrected = h_raw − 30.330</code></td>
+          <td>Converts raw autographic reading to local gauge datum in metres. Gauge datum = 30.330 mOD Malin Head (OSGM15). Applied at load time; all downstream values are in local gauge datum.</td>
+        </tr>
+        <tr>
+          <td>2. Outlier removal</td>
+          <td>IQR filter, scale = 1.5 (daily means)</td>
+          <td>Removes sensor calibration artefacts and implausible spikes. Applied to daily summary series; 15-min series retains original outlier removal via the same method. 181 daily rows removed from 12,855 initial rows.</td>
+        </tr>
+        <tr>
+          <td>3. Flood threshold</td>
+          <td><code>THRESHOLD = 2.6952 m</code></td>
+          <td>Derived independently from field observation: 3 feet (0.3048 m) below the 3 m level = 2.6952 m. Consistent with operational flood threshold set in the monitoring system. Used for all event identification and loss function labelling.</td>
+        </tr>
+        <tr>
+          <td>4. Manning's discharge proxy</td>
+          <td><code>Q = (W/n) · h^(5/3) · S₀^(1/2)</code></td>
+          <td>Wide-channel approximation. W = 160 m, n = 0.033, S₀ = 2×10⁻⁵. Provides a discharge estimate at each timestep without a measured rating curve. Used as a physics consistency check and optionally as an input feature.</td>
+        </tr>
+        <tr>
+          <td>5. Rise rate</td>
+          <td><code>dh/dt = Δh / Δt  [m/hr]</code></td>
+          <td>Finite difference of consecutive 15-min readings, converted to m/hr. Forward-filled at record boundaries. Positive values = rising, negative = falling. Used to define recession windows (L_recession) and to compute the empirical P95 bound (L_bounds).</td>
+        </tr>
+        <tr>
+          <td>6. Flood flag</td>
+          <td><code>in_flood = (h ≥ THRESHOLD)</code></td>
+          <td>Binary indicator. Event onset defined as the first timestep of each contiguous flood block. Used for event counting, class imbalance assessment, and evaluation (hit rate, false alarm rate).</td>
+        </tr>
+        <tr>
+          <td>7. Sliding window sequences</td>
+          <td>W = 96 steps (24 h)</td>
+          <td>Each training sample is a window of 96 consecutive 15-min readings as input, with target values at forecast horizons Δt ∈ {1h, 6h, 12h, 24h, 48h}. Windows that span a data gap &gt; 1 hour are discarded.</td>
+        </tr>
+        <tr>
+          <td>8. Train / validation / test split</td>
+          <td>Temporal split — no random shuffling</td>
+          <td>Train: 1989–2010. Validation: 2011–2017. Test: 2018–2024-03-14. The test period (held out entirely until final evaluation) includes the 2015–16 and 2023–24 flood seasons.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <strong>Class imbalance — confirmed.</strong> 33.8% of all 15-minute timesteps in the full 35-year record have h ≥ THRESHOLD (2.6952 m). The record contains 194 discrete flood events (threshold crossings). This fraction is high enough that no oversampling is required, but validation metrics must still be computed on flood-period subsets separately — an overall RMSE dominated by the low-water majority would mask poor performance during the operationally critical flood events.
+  </div>
 </section>
 
 <!-- 9. EXPERIMENTAL PLAN -->
 <section class="section" id="s18">
   <h2>Experimental Plan</h2>
 
+  <p>The programme is structured into three work phases defined by data availability and field access, each containing a progression of model experiments. Each phase produces a deployable or evaluable artefact before the next begins.</p>
+
   <div class="phase-grid">
     <div class="phase-card">
       <div class="phase-num">Phase 1</div>
-      <div class="phase-title">Baseline — Rolling Slope</div>
-      <div class="phase-detail">Current deployed system. Deterministic. Establishes the benchmark RMSE at each forecast horizon against which all subsequent models are compared.</div>
+      <div class="phase-title">Banagher-Only PIML</div>
+      <div class="phase-detail">All work derived from Station 25017 alone. No field work. No Shannonbridge. Physics constraints limited to L_recession and L_bounds. Loss: L_data + λ₁L_recession + λ₂L_bounds.</div>
     </div>
     <div class="phase-card">
       <div class="phase-num">Phase 2</div>
-      <div class="phase-title">Physics-Only Forecast</div>
-      <div class="phase-detail">Muskingum routing + Manning's recession curve, no ML. Establishes the physics-only ceiling. Requires SBRIDGE station integration and recession constant estimation from 35-yr record.</div>
+      <div class="phase-title">Shannonbridge Integration</div>
+      <div class="phase-detail">Pull Station 26028 historical record. Estimate Muskingum K from cross-correlation. Add L_routing to the loss. Add h_sb as an input feature. Retrain and compare against Phase 1 benchmark.</div>
     </div>
     <div class="phase-card">
       <div class="phase-num">Phase 3</div>
-      <div class="phase-title">LSTM — Data Only</div>
-      <div class="phase-detail">Pure LSTM (Option A, L_data only, no physics penalties). Establishes the pure data-driven ceiling and identifies at which horizons physics constraints are needed.</div>
+      <div class="phase-title">Field Work &amp; Full PDE</div>
+      <div class="phase-detail">Channel cross-section survey at Banagher Bridge. OPW rating curve request. Manning's n calibration. Activate L_pde (kinematic wave residual). Neural ODE architecture (Option C). Full Saint-Venant if bathymetry obtained.</div>
     </div>
-    <div class="phase-card">
-      <div class="phase-num">Phase 4</div>
-      <div class="phase-title">PIML — LSTM + Physics Loss</div>
-      <div class="phase-detail">Full Option A: LSTM with composite loss including L_recession, L_routing (once SBRIDGE live), L_bounds. Primary research contribution.</div>
-    </div>
-    <div class="phase-card">
-      <div class="phase-num">Phase 5</div>
-      <div class="phase-title">Residual Hybrid (Option B)</div>
-      <div class="phase-detail">Physics first-pass + NN residual correction. Comparison of interpretability vs. accuracy trade-off relative to Phase 4.</div>
-    </div>
-    <div class="phase-card">
-      <div class="phase-num">Phase 6</div>
-      <div class="phase-title">Neural ODE (Option C)</div>
-      <div class="phase-detail">Continuous-time dynamics formulation. Most rigorous architecture; requires torchdiffeq or diffrax. Final comparison against Phases 3–5.</div>
-    </div>
+  </div>
+
+  <h3>Phase 1 — Experiment Sequence</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Experiment</th><th>Model</th><th>Loss</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>1A</td><td>Rolling slope (current system)</td><td>—</td><td>Baseline RMSE at each horizon; benchmark everything against this</td></tr>
+        <tr><td>1B</td><td>Manning's recession curve (physics only)</td><td>—</td><td>Physics-only ceiling; establishes value of adding ML at all</td></tr>
+        <tr><td>1C</td><td>LSTM, data only</td><td>L_data</td><td>Data-driven ceiling; identifies horizons where physics constraints help</td></tr>
+        <tr><td>1D</td><td>LSTM + physics loss (Option A)</td><td>L_data + L_recession + L_bounds</td><td>Primary Phase 1 PIML result; paper contribution</td></tr>
+        <tr><td>1E</td><td>Residual hybrid (Option B)</td><td>L_data + L2 on residual</td><td>Interpretability comparison; degrades more gracefully under data gaps</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Phase 2 — Experiment Sequence</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Experiment</th><th>Addition vs Phase 1</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>2A</td><td>Add h_sb as input feature; no routing loss yet</td><td>Isolate effect of upstream information from routing constraint</td></tr>
+        <tr><td>2B</td><td>Add L_routing (Muskingum) to loss</td><td>Full Phase 2 PIML; test whether routing constraint improves accuracy beyond upstream feature alone</td></tr>
+        <tr><td>2C</td><td>Retrain residual hybrid with routing</td><td>Compare Option A vs Option B at Phase 2 data availability</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Phase 3 — Experiment Sequence</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Experiment</th><th>Addition vs Phase 2</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>3A</td><td>Add L_pde (kinematic wave residual, calibrated geometry)</td><td>Test PDE constraint benefit over empirical bounds</td></tr>
+        <tr><td>3B</td><td>Add rainfall as input feature</td><td>Multi-day horizon improvement; identifies precipitation-driven flood initiation</td></tr>
+        <tr><td>3C</td><td>Neural ODE (Option C, full physics RHS)</td><td>Most rigorous PINN; compute cost vs accuracy trade-off</td></tr>
+      </tbody>
+    </table>
   </div>
 
   <h3>Evaluation Protocol</h3>
@@ -1022,6 +1222,128 @@ Forecast: integrate from t₀ to t₀ + Δt using Runge-Kutta (RK4 or Dormand-Pr
   <p>Training/validation/test split: use a temporal split (not random). Suggested: 1989–2010 training, 2011–2017 validation, 2018–2024 test. The test period includes several significant Shannon flood events (2015–16 season, 2023–24 season) and must not be used during hyperparameter tuning.</p>
 </section>
 
+<!-- 10. PHASE 1 RESULTS -->
+<section class="section" id="s18b">
+  <h2>Phase 1 Results</h2>
+
+  <h3>Experiment 1C — Data-only LSTM</h3>
+  <p>Architecture: 2-layer LSTM, hidden size 128, dropout 0.2, 211,333 parameters. Trained for 15 epochs on 1989–2010 15-minute data; best validation checkpoint at epoch 3 (val MSE 0.005737). Evaluated on the held-out 2018–2024 test set.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Horizon</th><th>RMSE (m)</th><th>NSE</th></tr></thead>
+      <tbody>
+        <tr><td>T+1h</td><td>0.010</td><td>0.9997</td></tr>
+        <tr><td>T+6h</td><td>0.013</td><td>0.9995</td></tr>
+        <tr><td>T+12h</td><td>0.018</td><td>0.9989</td></tr>
+        <tr><td>T+24h</td><td>0.033</td><td>0.9964</td></tr>
+        <tr><td>T+48h</td><td>0.065</td><td>0.9858</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>Physics violation rates (1C):</strong></p>
+  <ul>
+    <li><strong>Sequential violation rate:</strong> 33.0% — fraction of consecutive prediction windows where the implied rate of change exceeds the empirical P95 bound (0.012 m/hr).</li>
+    <li><strong>Single-window violation rate:</strong> 22.8% — fraction of individual predictions where the T+1h forecast is not physically reachable from the current observed level at the P95 rate.</li>
+  </ul>
+  <div class="note">The training curve shows best validation at epoch 3, with severe divergence thereafter (train MSE falling to 0.001 while val MSE rises to 0.011). This overfitting directly motivates the physics regularisation introduced in Experiment 1D.</div>
+
+  <h3>Experiment 1D — Phase 1 PIML-LSTM</h3>
+  <p>Same architecture as 1C. Initialised from the 1C best checkpoint (epoch 3) and fine-tuned for 15 epochs at LR = 1×10⁻⁴ with composite loss: <code>L = L_data + 0.1·L_bounds + 0.05·L_recession</code>. Best validation checkpoint at epoch 1.</p>
+
+  <p><strong>L_bounds</strong> penalises predictions where the forecast level is not physically reachable from the current observed level at the empirical P95 rise rate, computed across all five forecast horizons. <strong>L_recession</strong> penalises rising predictions during confirmed recession windows (level above flood threshold and falling over the preceding hour).</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Horizon</th><th>RMSE (m)</th><th>NSE</th></tr></thead>
+      <tbody>
+        <tr><td>T+1h</td><td>0.007</td><td>0.9999</td></tr>
+        <tr><td>T+6h</td><td>0.011</td><td>0.9996</td></tr>
+        <tr><td>T+12h</td><td>0.018</td><td>0.9989</td></tr>
+        <tr><td>T+24h</td><td>0.035</td><td>0.9959</td></tr>
+        <tr><td>T+48h</td><td>0.067</td><td>0.9849</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>Physics violation rates (1D):</strong></p>
+  <ul>
+    <li><strong>Sequential violation rate:</strong> 34.0% — unchanged from 1C. L_bounds does not address cross-window temporal consistency.</li>
+    <li><strong>Single-window violation rate:</strong> 5.6% — reduced from 22.8% (−75%). L_bounds is effective for its intended purpose.</li>
+  </ul>
+
+  <h3>Violation Metric Distinction</h3>
+  <p>Two distinct violation metrics were identified during Phase 1 evaluation. The <strong>sequential violation rate</strong> measures temporal consistency across consecutive prediction windows (15-minute steps); this was 33% in both 1C and 1D because L_bounds was not designed to address it. The <strong>single-window violation rate</strong> measures whether each individual T+1h prediction is physically reachable from the current observed level; this dropped 75% under L_bounds, confirming the constraint is effective for its intended purpose. Eliminating sequential violations requires a temporal smoothness constraint operating across consecutive windows, or the Muskingum routing constraint introduced in Phase 2, which explicitly models wave propagation across time.</p>
+
+  <div class="note"><strong>Key finding:</strong> Physics constraint design is non-trivial. A constraint that measures the wrong quantity — as L_bounds v1 did when applied to inter-horizon rates rather than reachability from the current observed level — contributes zero gradient and achieves nothing. Careful alignment between the physics being encoded and the quantity being penalised is essential.</div>
+
+  <h3>Forecast Comparison — 1C vs 1D</h3>
+  <p>Visual comparison of 1C and 1D predictions against observed levels during the first sustained flood event in the test set (2018–2024) confirms that the physics regularisation does not degrade forecast accuracy. Both models track the observed slow-moving Shannon flood signal closely. The smoothing effect of L_bounds is subtle during sustained plateau conditions — the Shannon's slow dynamics mean both models converge on similar solutions. The 75% reduction in single-window violation rate is a statistical property of the full test set, most evident during rapid rise and recession phases rather than sustained flood plateaus.</p>
+
+  <p><em>Figure caption (1c_vs_1d_forecast.png):</em> "1C and 1D predictions are visually near-identical during sustained flood conditions, confirming that physics regularisation does not degrade forecast accuracy. The 75% reduction in single-window violation rate is a statistical property of the full test set, most evident during rapid rise and recession phases."</p>
+
+  <h3>Ablation — 1D-i and 1D-ii</h3>
+  <p>Two ablation experiments isolate the contribution of each physics term. Both were initialised from the 1C best checkpoint and fine-tuned for 15 epochs at LR = 1×10⁻⁴.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Experiment</th><th>Loss terms active</th><th>Best val MSE</th></tr></thead>
+      <tbody>
+        <tr><td>1D-i</td><td>L_data + 0.1·L_bounds</td><td>0.006025</td></tr>
+        <tr><td>1D-ii</td><td>L_data + 0.05·L_recession</td><td>0.006784</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Experiment 1D-i — L_bounds only</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Horizon</th><th>RMSE (m)</th><th>NSE</th></tr></thead>
+      <tbody>
+        <tr><td>T+1h</td><td>0.0063</td><td>0.9999</td></tr>
+        <tr><td>T+6h</td><td>0.0107</td><td>0.9996</td></tr>
+        <tr><td>T+12h</td><td>0.0180</td><td>0.9989</td></tr>
+        <tr><td>T+24h</td><td>0.0344</td><td>0.9960</td></tr>
+        <tr><td>T+48h</td><td>0.0659</td><td>0.9854</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Single-window violation rate:</strong> 5.29%</p>
+
+  <h3>Experiment 1D-ii — L_recession only</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Horizon</th><th>RMSE (m)</th><th>NSE</th></tr></thead>
+      <tbody>
+        <tr><td>T+1h</td><td>0.0068</td><td>0.9998</td></tr>
+        <tr><td>T+6h</td><td>0.0110</td><td>0.9996</td></tr>
+        <tr><td>T+12h</td><td>0.0186</td><td>0.9988</td></tr>
+        <tr><td>T+24h</td><td>0.0353</td><td>0.9958</td></tr>
+        <tr><td>T+48h</td><td>0.0670</td><td>0.9849</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>Single-window violation rate:</strong> 7.59%</p>
+
+  <h3>Phase 1 Summary — All Experiments</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Experiment</th><th>T+1h RMSE</th><th>T+48h RMSE</th><th>NSE (T+48h)</th><th>SW violation rate</th></tr></thead>
+      <tbody>
+        <tr><td>1C (data only)</td><td>0.010 m</td><td>0.065 m</td><td>0.9858</td><td>22.8%</td></tr>
+        <tr><td>1D (full: bounds + recession)</td><td>0.007 m</td><td>0.067 m</td><td>0.9849</td><td>5.6%</td></tr>
+        <tr><td>1D-i (L_bounds only)</td><td>0.0063 m</td><td>0.0659 m</td><td>0.9854</td><td>5.29%</td></tr>
+        <tr><td>1D-ii (L_recession only)</td><td>0.0068 m</td><td>0.0670 m</td><td>0.9849</td><td>7.59%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note"><strong>Ablation finding:</strong> L_bounds is the dominant physics term for reducing single-window violations. The bounds-only ablation (1D-i) achieves a 5.29% violation rate — essentially the same as the full 1D (5.6%) and marginally better, indicating that L_recession contributes little additional constraint on reachability from the current observed level. L_recession is correctly designed: it targets monotonicity during confirmed recession windows, not rise-rate reachability. Its contribution to the model is temporal smoothness during recession events, not single-window physical compliance. The two constraints are largely independent in their effect. RMSE is statistically indistinguishable across 1D, 1D-i, and 1D-ii — all NSE values ≥ 0.985 at T+48h — confirming that the physics terms act as regularisers without degrading forecast accuracy.</div>
+
+  <p>Next step: λ sensitivity analysis — vary LAMBDA_BOUNDS and LAMBDA_RECESSION independently to map the Pareto frontier between RMSE and violation rate. Following that, Phase 2 begins with Shannonbridge data integration and L_routing.</p>
+</section>
+
 <!-- 10. LIMITATIONS -->
 <section class="section" id="s19">
   <h2>Limitations and Open Questions</h2>
@@ -1037,6 +1359,8 @@ Forecast: integrate from t₀ to t₀ + Δt using Runge-Kutta (RK4 or Dormand-Pr
   <p><strong>No probabilistic calibration.</strong> The architectures described in Section 4 produce point estimates. Operational flood warning requires calibrated uncertainty quantification — the model should communicate not just a predicted level but a confidence interval. Extensions to probabilistic output include Monte Carlo Dropout, Deep Ensembles, or Conformalized Prediction, each of which is straightforward to add to Options A and B post-training.</p>
 
   <p><strong>Downstream influence from tidal effects.</strong> The River Shannon discharges into the Shannon Estuary. Tidal backwater effects propagate upstream during high-tide, low-flow conditions. At Banagher (approximately 160 km from the estuary mouth), tidal influence is negligible except potentially in extreme drought conditions. It is listed here for completeness and can be excluded from the initial model.</p>
+
+  <p><strong>Forecast horizon limited by gauge-only inputs.</strong> The model uses only in-situ water level observations at Station 25017 as input features. Without rainfall, NWP forcing, or upstream gauge integration, predictive skill degrades rapidly beyond approximately 48 hours — the model extrapolates recent autocorrelation rather than capturing incoming catchment response. Operational extension to 72–120h horizons would require NWP rainfall forcing (e.g. ECMWF ensemble) and upstream gauge inputs from stations such as Shannonbridge (26028), with appropriate travel-time lag estimation. This constraint should be prominently stated in any operational deployment of this model.</p>
 </section>
 
 <!-- REFERENCES -->
@@ -1053,7 +1377,7 @@ Forecast: integrate from t₀ to t₀ + Δt using Runge-Kutta (RK4 or Dormand-Pr
     <li>Jiang, S. et al. (2020). <em>Improving AI robustness through domain knowledge: Watershed hydrology as a test case.</em> arXiv:2001.08113.</li>
     <li>Chaudhary, A., Hobson, P., &amp; Butts, M. (2017). <em>Multi-output machine learning models for real-time flood forecasting.</em> Journal of Hydrology, 548, 657–675.</li>
     <li>Office of Public Works (OPW). <em>Waterlevel.ie — National Hydrometric Monitoring Network.</em> Ireland. Retrieved from https://waterlevel.ie</li>
-    <li>Office of Public Works (OPW). <em>Catchment Flood Risk Assessment and Management (CFRAM) — Shannon River Basin.</em> Technical Hydrological Report TD_HYDR_0114.</li>
+    <li>Jacobs Engineering / Office of Public Works (OPW). (2012). <em>River Shannon Level Operation Review — Technical Assessment: Hydrological Review of Water Level Operation (Unit of Management 25 &amp; 26).</em> Report TD_HYDR_0114_V2_A, Shannon CFRAM Study. July 2012. [Key data extracted: bed slope S₀ = 2×10⁻⁵ (callows reach); OSL at Banagher 35.36 mOD (Poolbeg); Station 25017 record 1989–2010; Shannonbridge station 26028; catchment area 7,980 km²; flood onset triggers.]</li>
     <li>Nash, J.E. &amp; Sutcliffe, J.V. (1970). <em>River flow forecasting through conceptual models part I — A discussion of principles.</em> Journal of Hydrology, 10(3), 282–290.</li>
     <li>Chow, V.T. (1959). <em>Open-channel hydraulics.</em> McGraw-Hill, New York. [Manning's equation and kinematic wave theory]</li>
     <li>Muskingum-Cunge routing: Cunge, J.A. (1969). <em>On the subject of a flood propagation method.</em> Journal of Hydraulic Research, 7(2), 205–230.</li>
@@ -1095,3 +1419,5 @@ Forecast: integrate from t₀ to t₀ + Δt using Runge-Kutta (RK4 or Dormand-Pr
   if(btn && dark) btn.textContent = '☀ light';
 })();
 </script>
+
+</body></html>

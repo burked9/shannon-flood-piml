@@ -27,12 +27,12 @@ Three physics constraints are encoded in the loss function:
 |---|---|---|---|---|---|
 | 1C | LSTM, data only | 0.005737 | 0.010 m | 0.065 m | 0.9858 |
 | 1D | PIML (L_data + L_bounds + L_recession) | 0.006724 | 0.007 m | 0.067 m | 0.9849 |
-| 1D-i | L_bounds only | — | — | — | — |
-| 1D-ii | L_recession only | — | — | — | — |
+| 1D-i | L_bounds only | 0.006025 | 0.006 m | 0.066 m | 0.9854 |
+| 1D-ii | L_recession only | 0.006784 | 0.007 m | 0.067 m | 0.9849 |
 
 **Single-window physics violation rate:** 22.8% (1C) → 5.6% (1D) — **75% reduction**
 
-Ablation results (1D-i, 1D-ii) in progress. Full methodology and results: [`flood_ml.html`](flood_ml.html)
+**Ablation finding:** L_bounds is the dominant term — 1D-i (bounds only) achieves 5.29% violation vs 1D-ii (recession only) at 7.59%. RMSE is statistically indistinguishable across all physics experiments (NSE ≥ 0.985 at T+48h). Full methodology and results: [`flood_ml.html`](flood_ml.html)
 
 ---
 
