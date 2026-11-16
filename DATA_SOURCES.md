@@ -42,3 +42,27 @@ obtained from OPW. Permission documentation is held by the repository owner.
 Datum correction applied: all values adjusted by −30.330 m (gauge datum to
 metres above local datum) to give values in metres above the channel bed.
 Flood threshold: 2.695 m (OPW/CFRAM definition, converted from mOD Poolbeg).
+
+---
+
+## OPW National Hydrometric Monitoring Network — Station 26028
+
+| Field | Value |
+|---|---|
+| Station | 26028 — Shannonbridge, River Shannon |
+| Provider | Office of Public Works (OPW), Ireland |
+| Source | https://waterlevel.ie |
+| Licence | Creative Commons Attribution 4.0 International (CC BY 4.0) |
+
+### Files
+
+| File | Description |
+|---|---|
+| `data/26028_shannonbridge_15min.csv` | 15-minute water level readings, Station 26028 |
+
+Datum correction applied: all values adjusted by −30.406 m (gauge datum =
+30.406 mOD Malin Head, OSGM15). After correction, Station 26028 levels are
+on the same absolute reference as Station 25017 and directly comparable.
+Offset between the two gauge zeros: 7.6 cm (30.406 − 30.330 m).
+
+Same attribution, disclaimer, and licence terms as Station 25017 above.
