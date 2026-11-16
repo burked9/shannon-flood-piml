@@ -518,7 +518,7 @@ tr:last-child td { border-bottom: none; }
     <span>Station: 25017 · Banagher Bridge · River Shannon</span>
     <span>Record: 1989–present (35 years daily; 15-min interval subset)</span>
     <span>Status: Pre-deployment research</span>
-    <span>Last revised: 2026-11-15</span>
+    <span>Last revised: 2026-11-16</span>
   </div>
 </header>
 
@@ -1341,7 +1341,26 @@ Forecast: integrate from t₀ to t₀ + Δt using Runge-Kutta (RK4 or Dormand-Pr
 
   <div class="note"><strong>Ablation finding:</strong> L_bounds is the dominant physics term for reducing single-window violations. The bounds-only ablation (1D-i) achieves a 5.29% violation rate — essentially the same as the full 1D (5.6%) and marginally better, indicating that L_recession contributes little additional constraint on reachability from the current observed level. L_recession is correctly designed: it targets monotonicity during confirmed recession windows, not rise-rate reachability. Its contribution to the model is temporal smoothness during recession events, not single-window physical compliance. The two constraints are largely independent in their effect. RMSE is statistically indistinguishable across 1D, 1D-i, and 1D-ii — all NSE values ≥ 0.985 at T+48h — confirming that the physics terms act as regularisers without degrading forecast accuracy.</div>
 
-  <p>Next step: λ sensitivity analysis — vary LAMBDA_BOUNDS and LAMBDA_RECESSION independently to map the Pareto frontier between RMSE and violation rate. Following that, Phase 2 begins with Shannonbridge data integration and L_routing.</p>
+  <h3>λ_bounds Sensitivity Analysis</h3>
+  <p>A sensitivity sweep over LAMBDA_BOUNDS ∈ {0, 0.025, 0.05, 0.1, 0.2, 0.5} with LAMBDA_RECESSION = 0 was conducted to characterise the trade-off between physical compliance and forecast accuracy. Each variant was fine-tuned from the 1C checkpoint for 5 epochs at LR = 1×10⁻⁴. The existing 1C and 1D-i checkpoints served as anchors at λ_b = 0 and λ_b = 0.1 respectively.</p>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>λ_bounds</th><th>T+1h RMSE (m)</th><th>T+48h RMSE (m)</th><th>SW violation rate</th></tr></thead>
+      <tbody>
+        <tr><td>0.000 (1C baseline)</td><td>0.0098</td><td>0.0649</td><td>22.8%</td></tr>
+        <tr><td>0.025</td><td>0.0069</td><td>0.0667</td><td>8.2%</td></tr>
+        <tr><td>0.050</td><td>0.0069</td><td>0.0671</td><td>8.1%</td></tr>
+        <tr><td>0.100 (1D-i)</td><td>0.0063</td><td>0.0659</td><td>5.3%</td></tr>
+        <tr><td>0.200</td><td>0.0060</td><td>0.0673</td><td>6.2%</td></tr>
+        <tr><td>0.500</td><td>0.0061</td><td>0.0664</td><td>6.0%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note"><strong>Sensitivity finding:</strong> The violation rate drops sharply from 22.8% at λ_b = 0 to ~8% at λ_b = 0.025 — any positive weight on L_bounds produces a large compliance gain. Further improvement is achieved at λ_b = 0.1 (5.3%), which appears near the elbow of the curve: values beyond 0.1 show no further reduction and marginally increased violations at 0.2–0.5. T+1h RMSE is flat across the entire sweep (0.0060–0.0069 m), confirming that L_bounds acts as a pure regulariser at these weights with no accuracy cost. The original choice of LAMBDA_BOUNDS = 0.1 is validated as near-optimal.</div>
+
+  <p>Phase 1 is now complete. Phase 2 begins with Shannonbridge data integration (Station 26028) and the addition of L_routing to the loss function.</p>
 </section>
 
 <!-- 10. LIMITATIONS -->
