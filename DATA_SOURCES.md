@@ -50,6 +50,12 @@ Flood threshold: 2.695 m (OPW/CFRAM definition, converted from mOD Poolbeg).
 | Field | Value |
 |---|---|
 | Station | 26028 — Shannonbridge, River Shannon |
+| Location | Left bank, ~10 m upstream of R357 bridge, western end of Shannonbridge town |
+| Coordinates | 53.2799° N, 8.0496° W |
+| Waterbody | River Shannon |
+| Catchment area | 4,999 km² |
+| River Basin District | Shannon RBD |
+| Station type | Level only — 5 indicative gaugings taken 1991–1992; no rating curve |
 | Provider | Office of Public Works (OPW), Ireland |
 | Source | https://waterlevel.ie |
 | Licence | Creative Commons Attribution 4.0 International (CC BY 4.0) |
@@ -66,3 +72,11 @@ on the same absolute reference as Station 25017 and directly comparable.
 Offset between the two gauge zeros: 7.6 cm (30.406 − 30.330 m).
 
 Same attribution, disclaimer, and licence terms as Station 25017 above.
+
+**Note on rating curve:** Only 5 indicative gaugings exist for this station (1991–1992).
+No full rating curve is available, so stage cannot be converted to discharge.
+Muskingum routing in Phase 2 is therefore formulated in level space (h → h)
+rather than the conventional discharge space (Q → Q). The catchment area at
+Shannonbridge (4,999 km²) is substantially smaller than at Banagher (7,980 km²);
+the Suck and Brosna tributaries — which contribute >40% of gauged inflow during
+flood events — join the Shannon between the two stations.
